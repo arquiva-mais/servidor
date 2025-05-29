@@ -2,7 +2,7 @@ const Processo = require('../models/processo.model');
 const { Op } = require('sequelize');
 
 async function listarProcessos(filtros) {
-  const { busca, status, setor, objeto, data_inicio, data_fim } = filtros;
+  const { busca, concluido, setor, objeto, data_inicio, data_fim } = filtros;
 
   const where = {};
 
@@ -15,7 +15,7 @@ async function listarProcessos(filtros) {
     ];
   }
 
-  if (status !== undefined) where.concluido = status === 'concluido';
+  if (concluido) where.concluido = concluido;
   if (setor) where.setor_atual = setor;
   if (objeto) where.objeto = objeto;
   if (data_inicio || data_fim) {

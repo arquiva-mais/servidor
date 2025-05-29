@@ -4,8 +4,8 @@ const sequelize = require('../config/database');
 const Processo = sequelize.define('Processo', {
   numero_processo: { type: DataTypes.STRING, allowNull: false, unique: true },
   data_entrada: DataTypes.DATEONLY,
-  competencia: DataTypes.STRING,
-  objeto: DataTypes.STRING,
+  competencia: {type: DataTypes.STRING, allowNull: false},
+  objeto: {type: DataTypes.STRING, allowNull: false},
   interessado: DataTypes.STRING,
   orgao_gerador: DataTypes.STRING,
   responsavel: DataTypes.STRING,
