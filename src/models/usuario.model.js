@@ -11,6 +11,14 @@ const Usuario = sequelize.define('Usuario', {
     defaultValue: 'user',
     allowNull: false
   },
+  orgao_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'orgaos',
+      key: 'id'
+    }
+  },
   ativo: { type: DataTypes.BOOLEAN, defaultValue: true }
 }, {
   tableName: 'usuarios',

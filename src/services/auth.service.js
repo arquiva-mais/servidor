@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../middleware/auth.middleware');
 
 async function registrarUsuario(dados) {
-  const { nome, email, senha, role } = dados;
+  const { nome, email, senha, role, orgao_id } = dados;
 
   const usuarioExiste = await Usuario.findOne({ where: { email } });
   if (usuarioExiste) {
@@ -14,7 +14,8 @@ async function registrarUsuario(dados) {
     nome,
     email,
     senha,
-    role: role || 'user'
+    role: role || 'user',
+    orgao_id
   });
 
   const token = jwt.sign(
@@ -28,7 +29,8 @@ async function registrarUsuario(dados) {
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
-      role: usuario.role
+      role: usuario.role,
+      orgao_id: usuario.orgao_id
     },
     token
   };

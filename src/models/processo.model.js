@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const Processo = sequelize.define('Processo', {
-  numero_processo: { type: DataTypes.STRING, allowNull: false, unique: true },
+  numero_processo: { type: DataTypes.STRING, allowNull: false /*unique: true*/ },
   data_entrada: DataTypes.DATEONLY,
   competencia: {type: DataTypes.STRING, allowNull: false},
   objeto: {type: DataTypes.STRING, allowNull: false},
@@ -18,6 +18,14 @@ const Processo = sequelize.define('Processo', {
   total: { type: DataTypes.FLOAT, defaultValue: 0 },
   concluido: { type: DataTypes.BOOLEAN, defaultValue: false },
   data_atualizacao: DataTypes.DATE,
+  orgao_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'orgaos',
+      key: 'id'
+    }
+  }
 }, {
   tableName: 'processos',
   timestamps: true,
