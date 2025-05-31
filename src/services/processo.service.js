@@ -1,8 +1,9 @@
 const Processo = require('../models/processo.model');
 const { Op } = require('sequelize');
 
-async function listarProcessos(filtros) {
+async function listarProcessos(filtros, paginacao = {}) {
   const { busca, concluido, setor, objeto, data_inicio, data_fim } = filtros;
+  const { page = 1, limit = 10 } = paginacao;
 
   const where = {};
 
@@ -15,7 +16,7 @@ async function listarProcessos(filtros) {
     ];
   }
 
-  if (concluido) where.concluido = concluido;
+  if (concluido !== undefined) where.concluido = concluido === 'true';
   if (setor) where.setor_atual = setor;
   if (objeto) where.objeto = objeto;
   if (data_inicio || data_fim) {
@@ -24,11 +25,32 @@ async function listarProcessos(filtros) {
     if (data_fim) where.data_entrada[Op.lte] = data_fim;
   }
 
-  return Processo.findAll({ where, order: [['data_entrada', 'DESC']] });
+  // Calcular offset
+  const offset = (page - 1) * limit;
+
+  const resultado = await Processo.findAndCountAll({
+    where,
+    order: [['data_entrada', 'DESC']],
+    limit: parseInt(limit),
+    offset: parseInt(offset)
+  });
+
+  // Calcular informações de paginação
+  const totalPaginas = Math.ceil(resultado.count / limit);
+
+  return {
+    processos: resultado.rows, // Os dados estão em 'rows' no Sequelize
+    pagination: {
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(resultado.count / limit),
+      totalItems: resultado.count, // Total está em 'count' no Sequelize
+      itemsPerPage: parseInt(limit)
+    }
+  };
 }
 
 async function listarProcessoPorId(processo_id) {
-  return await Processo.findOne({ where: {id: processo_id} })
+  return await Processo.findOne({ where: { id: processo_id } })
 }
 
 async function criarProcesso(dados) {

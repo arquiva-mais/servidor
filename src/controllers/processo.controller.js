@@ -2,8 +2,14 @@ const service = require('../services/processo.service');
 
 exports.listar = async (req, res) => {
   try {
-    const processos = await service.listarProcessos(req.query);
-    res.json(processos);
+    const filtros = req.query
+    const paginacao = {
+      page: req.query.page || 1,
+      limit: req.query.limit || 10
+    }
+
+    const resultado = await service.listarProcessos(filtros, paginacao);
+    res.json(resultado);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao listar processos' });
@@ -11,12 +17,12 @@ exports.listar = async (req, res) => {
 };
 
 exports.listarPorId = async (req, res) => {
-   try {
-      const processo = await service.listarProcessoPorId(req.body.id)
-      res.json(processo)
-   } catch (err) {
-      res.status(500).json({ error: 'Erro ao buscar processo' })
-   }
+  try {
+    const processo = await service.listarProcessoPorId(req.body.id)
+    res.json(processo)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar processo' })
+  }
 }
 
 exports.criar = async (req, res) => {
@@ -25,7 +31,7 @@ exports.criar = async (req, res) => {
     res.status(201).json({ id: processo.id, message: 'Criado com sucesso' });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ error: err.message});
+    res.status(400).json({ error: err.message });
   }
 };
 
