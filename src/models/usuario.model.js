@@ -19,7 +19,15 @@ const Usuario = sequelize.define('Usuario', {
       key: 'id'
     }
   },
-  ativo: { type: DataTypes.BOOLEAN, defaultValue: true }
+  ativo: { type: DataTypes.BOOLEAN, defaultValue: true },
+  refresh_token: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  refresh_token_expires: {
+    type: DataTypes.DATE,
+    allowNull: true
+  }
 }, {
   tableName: 'usuarios',
   timestamps: true,
@@ -35,7 +43,7 @@ const Usuario = sequelize.define('Usuario', {
   }
 });
 
-Usuario.prototype.validarSenha = async function(senha) {
+Usuario.prototype.validarSenha = async function (senha) {
   return await bcrypt.compare(senha, this.senha);
 };
 
