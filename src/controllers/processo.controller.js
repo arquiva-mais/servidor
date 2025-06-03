@@ -51,6 +51,7 @@ exports.atualizar = async (req, res) => {
   try {
     const processo = await service.listarProcessoPorId(req.params.id);
 
+
     if (!processo) {
       return res.status(404).json({ error: 'Processo não encontrado' });
     }
@@ -68,8 +69,8 @@ exports.atualizar = async (req, res) => {
 
 exports.deletar = async (req, res) => {
   try {
-    const processo = await service.listarProcessoPorId(req.params.id);
-
+    //const processo = await service.listarProcessoPorId(req.params.id);
+    /*
     if (!processo) {
       return res.status(404).json({ error: 'Processo não encontrado' });
     }
@@ -77,7 +78,7 @@ exports.deletar = async (req, res) => {
     if (processo.orgao_id !== req.usuario.orgao_id) {
       return res.status(403).json({ error: 'Acesso negado a este processo' });
     }
-
+    */
     await service.deletarProcesso(req.params.id);
     res.json({ message: 'Processo deletado com sucesso' });
   } catch (err) {

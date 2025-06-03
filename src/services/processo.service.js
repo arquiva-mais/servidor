@@ -5,7 +5,9 @@ async function listarProcessos(filtros, paginacao = {}) {
   const { busca, concluido, setor, objeto, data_inicio, data_fim, orgao_id } = filtros;
   const { page = 1, limit = 10 } = paginacao;
 
-  const where = {};
+  const where = {
+    is_deleted: false
+  };
 
   if (busca) {
     where[Op.or] = [
@@ -105,8 +107,8 @@ async function criarProcesso(dados, usuarioLogado) {
 
 async function atualizarProcesso(id, dados) {
   const processo = await Processo.findByPk(id);
+  console.log("PASSOU AQUI")
   if (!processo) throw new Error('Processo não encontrado');
-
   const valores = ['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
     acc[key] = parseFloat(dados[key]) || 0;
     return acc;
@@ -123,9 +125,17 @@ async function atualizarProcesso(id, dados) {
 }
 
 async function deletarProcesso(id) {
-  const processo = await Processo.findByPk(id);
+  const processo = await Processo.scope('withDeleted').findOne({
+    where: {
+      id: id,
+      is_deleted: false
+    }
+  });
+
   if (!processo) throw new Error('Processo não encontrado');
-  return processo.destroy();
+
+  await processo.update({ is_deleted: true });
+  return { message: 'Processo deletado com sucesso' };
 }
 
 module.exports = { listarProcessos, listarProcessoPorId, criarProcesso, atualizarProcesso, deletarProcesso };
