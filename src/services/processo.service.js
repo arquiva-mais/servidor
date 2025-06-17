@@ -3,7 +3,7 @@ const { Op } = require('sequelize');
 
 async function listarProcessos(filtros, paginacao = {}) {
   const { busca, concluido, setor, objeto, data_inicio, data_fim, orgao_id } = filtros;
-  const { page = 1, limit = 10 } = paginacao;
+  const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
 
   const where = {
     is_deleted: false
@@ -31,6 +31,27 @@ async function listarProcessos(filtros, paginacao = {}) {
 
   const offset = (page - 1) * limit;
 
+  // ✅ MAPEAMENTO DE CAMPOS PARA ORDENAÇÃO
+  const fieldMapping = {
+    'numero_processo': 'numero_processo',
+    'objeto': 'objeto',
+    'interessado': 'interessado',
+    'orgao_gerador': 'orgao_gerador',
+    'responsavel': 'responsavel',
+    'setor_atual': 'setor_atual',
+    'status': 'status',
+    'data_entrada': 'data_entrada',
+    'competencia': 'competencia',
+    'valor_convenio': 'valor_convenio',
+    'valor_recurso_proprio': 'valor_recurso_proprio',
+    'valor_royalties': 'valor_royalties',
+    'valor_total': 'total'
+  };
+
+  // ✅ CONFIGURAÇÃO DA ORDENAÇÃO
+  const orderField = fieldMapping[sortBy] || 'data_entrada';
+  const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
   const resultado = await Processo.findAndCountAll({
     where,
     include: {
@@ -38,7 +59,7 @@ async function listarProcessos(filtros, paginacao = {}) {
       as: 'orgao',
       attributes: ['id', 'nome', 'tipo']
     },
-    order: [['data_entrada', 'DESC']],
+    order: [[orderField, orderDirection]],
     limit: parseInt(limit),
     offset: parseInt(offset)
   });

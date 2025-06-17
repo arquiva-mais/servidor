@@ -6,9 +6,14 @@ exports.listar = async (req, res) => {
 
     filtros.orgao_id = req.usuario.orgao_id;
 
+    const sortBy = req.query.sortBy || 'id';
+    const sortOrder = req.query.sortOrder || 'desc';
+
     const paginacao = {
       page: req.query.page || 1,
-      limit: req.query.limit || 10
+      limit: req.query.limit || 10,
+      sortBy,
+      sortOrder
     };
 
     const resultado = await service.listarProcessos(filtros, paginacao);
