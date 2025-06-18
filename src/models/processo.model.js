@@ -11,6 +11,7 @@ const Processo = sequelize.define('Processo', {
   orgao_gerador: { type: DataTypes.STRING, allowNull: false },
   responsavel: { type: DataTypes.STRING, allowNull: true },
   setor_atual: { type: DataTypes.STRING, allowNull: false },
+  update_for: { type: DataTypes.STRING, allowNull: true },
   descricao: DataTypes.TEXT,
   observacao: DataTypes.TEXT,
   valor_convenio: { type: DataTypes.FLOAT, defaultValue: 0 },

@@ -65,7 +65,7 @@ exports.atualizar = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado a este processo' });
     }
 
-    const processoAtualizado = await service.atualizarProcesso(req.params.id, req.body);
+    const processoAtualizado = await service.atualizarProcesso(req.params.id, req.body, req.usuario);
     res.json(processoAtualizado);
   } catch (err) {
     res.status(400).json({ error: err.message });

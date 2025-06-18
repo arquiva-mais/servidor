@@ -31,7 +31,6 @@ async function listarProcessos(filtros, paginacao = {}) {
 
   const offset = (page - 1) * limit;
 
-  // ✅ MAPEAMENTO DE CAMPOS PARA ORDENAÇÃO
   const fieldMapping = {
     'numero_processo': 'numero_processo',
     'objeto': 'objeto',
@@ -48,7 +47,6 @@ async function listarProcessos(filtros, paginacao = {}) {
     'valor_total': 'total'
   };
 
-  // ✅ CONFIGURAÇÃO DA ORDENAÇÃO
   const orderField = fieldMapping[sortBy] || 'data_entrada';
   const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
@@ -111,9 +109,9 @@ async function criarProcesso(dados, usuarioLogado) {
       ...dados,
       ...valores,
       orgao_id: usuarioLogado.orgao_id,
+      responsavel: usuarioLogado.nome,
       concluido: false,
       total,
-      data_atualizacao: new Date(),
       data_entrada: dados.data_entrada || new Date().toISOString().split('T')[0],
     };
 
@@ -126,7 +124,7 @@ async function criarProcesso(dados, usuarioLogado) {
   }
 }
 
-async function atualizarProcesso(id, dados) {
+async function atualizarProcesso(id, dados, user_logado) {
   const processo = await Processo.findByPk(id);
   console.log("PASSOU AQUI")
   if (!processo) throw new Error('Processo não encontrado');
@@ -142,6 +140,7 @@ async function atualizarProcesso(id, dados) {
     ...valores,
     total,
     data_atualizacao: new Date(),
+    update_for: user_logado.nome
   });
 }
 
