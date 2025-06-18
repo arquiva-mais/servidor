@@ -2,9 +2,8 @@ const Processo = require('../models/processo.model');
 const { Op } = require('sequelize');
 
 async function listarProcessos(filtros, paginacao = {}) {
-  const { busca, concluido, setor, objeto, data_inicio, data_fim, orgao_id } = filtros;
+  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status } = filtros;
   const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
-
   const where = {
     is_deleted: false
   };
@@ -18,10 +17,11 @@ async function listarProcessos(filtros, paginacao = {}) {
     ];
   }
 
-  if (concluido !== undefined) where.concluido = concluido === 'true';
+  //if (concluido !== undefined) where.concluido = concluido === 'true';
   if (setor) where.setor_atual = setor;
   if (objeto) where.objeto = objeto;
   if (orgao_id) where.orgao_id = orgao_id;
+  if (status) where.status = status
 
   if (data_inicio || data_fim) {
     where.data_entrada = {};
@@ -88,8 +88,6 @@ async function listarProcessoPorId(processo_id) {
 
 async function criarProcesso(dados, usuarioLogado) {
   try {
-    console.log("Orgao id", usuarioLogado.orgao_id)
-    console.log("Id orgao processo: ", dados.numero_processo)
     const existe = await Processo.findOne({
       where: {
         numero_processo: dados.numero_processo,
@@ -115,8 +113,6 @@ async function criarProcesso(dados, usuarioLogado) {
       data_entrada: dados.data_entrada || new Date().toISOString().split('T')[0],
     };
 
-    console.log('Dados finais para criação:', dadosProcesso);
-
     return await Processo.create(dadosProcesso);
   } catch (error) {
     console.error('Erro detalhado ao criar processo:', error);
@@ -126,7 +122,6 @@ async function criarProcesso(dados, usuarioLogado) {
 
 async function atualizarProcesso(id, dados, user_logado) {
   const processo = await Processo.findByPk(id);
-  console.log("PASSOU AQUI")
   if (!processo) throw new Error('Processo não encontrado');
   const valores = ['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
     acc[key] = parseFloat(dados[key]) || 0;
