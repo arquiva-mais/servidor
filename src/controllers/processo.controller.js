@@ -24,6 +24,18 @@ exports.listar = async (req, res) => {
   }
 };
 
+exports.listarTodosPorOrgao = async (req, res) => {
+  try {
+    const orgao_id = req.usuario.orgao_id;
+
+    const resultado = await service.listarTodosProcessosPorOrgao(orgao_id);
+    res.json(resultado);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao listar processos' });
+  }
+};
+
 exports.listarPorId = async (req, res) => {
   try {
     const processo = await service.listarProcessoPorId(req.body.id);

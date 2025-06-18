@@ -75,6 +75,31 @@ async function listarProcessos(filtros, paginacao = {}) {
   };
 }
 
+async function listarTodosProcessosPorOrgao(orgao_id) {
+  try {
+    if (!orgao_id) {
+      throw new Error('ID do orgão não fornecido.')
+    }
+
+    const processos = await Processo.findAll({
+      attributes: ['status', 'valor_convenio', 'valor_recurso_proprio', 'valor_royalties', 'total'],
+      where: {
+        orgao_id: orgao_id,
+        is_deleted: false
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    return {
+      success: true,
+      processos: processos
+    }
+  } catch {
+    throw new Error('Erro ao buscar processos')
+  }
+}
+
+
 async function listarProcessoPorId(processo_id) {
   return await Processo.findOne({
     where: { id: processo_id },
@@ -153,4 +178,4 @@ async function deletarProcesso(id) {
   return { message: 'Processo deletado com sucesso' };
 }
 
-module.exports = { listarProcessos, listarProcessoPorId, criarProcesso, atualizarProcesso, deletarProcesso };
+module.exports = { listarProcessos, listarProcessoPorId, criarProcesso, atualizarProcesso, deletarProcesso, listarTodosProcessosPorOrgao };

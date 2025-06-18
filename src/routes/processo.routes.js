@@ -6,6 +6,7 @@ const { verificarToken, verificarRole } = require('../middleware/auth.middleware
 router.use(verificarToken)
 
 router.get('/', controllerProcessos.listar);
+router.get('/listar-todos', controllerProcessos.listarTodosPorOrgao)
 router.get('/listar-por-id', controllerProcessos.listarPorId)
 router.post('/', verificarRole(['admin']), controllerProcessos.criar);
 router.put('/:id', verificarRole(['admin', 'user']) ,controllerProcessos.atualizar);
