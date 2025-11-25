@@ -11,8 +11,10 @@ exports.registrar = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, senha } = req.body;
-    const resultado = await authService.loginUsuario(email, senha);
+    const { email, senha, password } = req.body;
+    // Aceitar tanto 'senha' quanto 'password' para compatibilidade
+    const senhaFinal = senha || password;
+    const resultado = await authService.loginUsuario(email, senhaFinal);
     res.json(resultado);
   } catch (error) {
     res.status(401).json({ error: error.message });
