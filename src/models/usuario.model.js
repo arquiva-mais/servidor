@@ -45,20 +45,11 @@ const Usuario = sequelize.define('Usuario', {
 
 Usuario.prototype.validarSenha = async function (senha) {
   try {
-    console.log('validarSenha - senha recebida:', senha);
-    console.log('validarSenha - this.senha:', this.senha);
-    console.log('validarSenha - tipo this.senha:', typeof this.senha);
-    
     if (!senha || !this.senha) {
-      console.log('Senha ou hash inválido!');
       return false;
     }
-    
-    const resultado = await bcrypt.compare(senha, this.senha);
-    console.log('Resultado comparação:', resultado);
-    return resultado;
+    return await bcrypt.compare(senha, this.senha);
   } catch (error) {
-    console.log('Erro em validarSenha:', error.message);
     return false;
   }
 };

@@ -11,17 +11,12 @@ exports.registrar = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    console.log('=== LOGIN CONTROLLER ===');
-    console.log('Body:', JSON.stringify(req.body));
     const { email, senha, password } = req.body;
     // Aceitar tanto 'senha' quanto 'password' para compatibilidade
     const senhaFinal = senha || password;
-    console.log('Email:', email);
-    console.log('SenhaFinal:', senhaFinal);
     const resultado = await authService.loginUsuario(email, senhaFinal);
     res.json(resultado);
   } catch (error) {
-    console.log('Erro no login:', error.message);
     res.status(401).json({ error: error.message });
   }
 };

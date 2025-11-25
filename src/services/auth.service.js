@@ -48,8 +48,7 @@ async function generateTokens(userId, email, role) {
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: '7d' }
   );
-  console.log('Tokens criados: ', accessToken)
-  console.log('Tokens criados: ', refreshToken)
+  
   return { accessToken, refreshToken };
 }
 
@@ -59,28 +58,9 @@ async function loginUsuario(email, senha) {
     where: { email, ativo: true },
     attributes: ['id', 'nome', 'email', 'senha', 'role', 'orgao_id', 'ativo', 'refresh_token', 'refresh_token_expires']
   });
-  
-  console.log('=== DEBUG LOGIN ===');
-  console.log('Email:', email);
-  console.log('Senha recebida:', senha);
-  console.log('Usuario encontrado:', usuario ? 'Sim' : 'Não');
-  if (usuario) {
-    console.log('Usuario ID:', usuario.id);
-    console.log('Usuario nome:', usuario.nome);
-    console.log('Senha no banco existe:', usuario.senha ? 'Sim' : 'Não');
-    console.log('Senha no banco length:', usuario.senha ? usuario.senha.length : 0);
-  }
-  console.log('==================');
 
-  if (!usuario) {
-    throw new Error('Usuário não encontrado');
-  }
-  
-  const senhaValida = await usuario.validarSenha(senha);
-  console.log('Senha válida:', senhaValida);
-  
-  if (!senhaValida) {
-    throw new Error('Senha inválida');
+  if (!usuario || !(await usuario.validarSenha(senha))) {
+    throw new Error('Credenciais inválidas');
   }
 
   const { accessToken, refreshToken } = await generateTokens(
