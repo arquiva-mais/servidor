@@ -55,6 +55,10 @@ async function generateTokens(userId, email, role) {
 
 async function loginUsuario(email, senha) {
   const usuario = await Usuario.findOne({ where: { email, ativo: true } });
+  
+  console.log('Usuario encontrado:', usuario ? 'Sim' : 'Não');
+  console.log('Senha fornecida:', senha ? 'Sim' : 'Não');
+  console.log('Senha no banco:', usuario?.senha ? 'Sim' : 'Não');
 
   if (!usuario || !(await usuario.validarSenha(senha))) {
     throw new Error('Credenciais inválidas');
