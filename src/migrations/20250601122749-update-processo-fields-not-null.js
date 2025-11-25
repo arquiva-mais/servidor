@@ -3,6 +3,16 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Verificar se a tabela processos existe
+    const tableExists = await queryInterface.showAllTables().then(tables => {
+      return tables.includes('processos');
+    });
+
+    if (!tableExists) {
+      console.log('Tabela "processos" ainda não existe, pulando atualização...');
+      return;
+    }
+
     await queryInterface.sequelize.query(`
       UPDATE processos
       SET

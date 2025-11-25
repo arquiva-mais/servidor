@@ -22,7 +22,9 @@ app.get("/", (req, res) => {
   res.send("Ola, mundo")
 })
 
+const PORT = process.env.PORT || 3001;
+
 sequelize.authenticate().then(() => {
   console.log('Banco sincronizado');
-  app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
+  app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
 });

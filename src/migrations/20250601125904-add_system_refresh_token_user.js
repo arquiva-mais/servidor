@@ -5,6 +5,15 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     try {
       // Verificar se a tabela existe
+      const tableExists = await queryInterface.showAllTables().then(tables => {
+        return tables.includes('usuarios');
+      });
+
+      if (!tableExists) {
+        console.log('Tabela "usuarios" não existe ainda, pulando adição de colunas...');
+        return;
+      }
+
       const tableDescription = await queryInterface.describeTable('usuarios');
 
       // Adicionar refresh_token se não existir
