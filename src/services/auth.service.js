@@ -56,12 +56,27 @@ async function generateTokens(userId, email, role) {
 async function loginUsuario(email, senha) {
   const usuario = await Usuario.findOne({ where: { email, ativo: true } });
   
+  console.log('=== DEBUG LOGIN ===');
+  console.log('Email:', email);
+  console.log('Senha recebida:', senha);
   console.log('Usuario encontrado:', usuario ? 'Sim' : 'Não');
-  console.log('Senha fornecida:', senha ? 'Sim' : 'Não');
-  console.log('Senha no banco:', usuario?.senha ? 'Sim' : 'Não');
+  if (usuario) {
+    console.log('Usuario ID:', usuario.id);
+    console.log('Usuario nome:', usuario.nome);
+    console.log('Senha no banco:', usuario.senha);
+    console.log('Tipo senha:', typeof usuario.senha);
+  }
+  console.log('==================');
 
-  if (!usuario || !(await usuario.validarSenha(senha))) {
-    throw new Error('Credenciais inválidas');
+  if (!usuario) {
+    throw new Error('Usuário não encontrado');
+  }
+  
+  const senhaValida = await usuario.validarSenha(senha);
+  console.log('Senha válida:', senhaValida);
+  
+  if (!senhaValida) {
+    throw new Error('Senha inválida');
   }
 
   const { accessToken, refreshToken } = await generateTokens(
