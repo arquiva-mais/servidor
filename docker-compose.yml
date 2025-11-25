@@ -1,50 +1,66 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
-    container_name: processo_app
-    ports:
-      - "3001:3001"
-    environment:
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - PORT=3001
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-    depends_on:
-      - postgres
-    volumes:
-      - .:/app
-    restart: always
-
   postgres:
-    image: postgres:15-alpine
-    container_name: processo_postgres
-    restart: always
+    image: postgres:16-alpine
+    container_name: arquivamais_postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
-    ports:
-      - "5400:5432"
+      POSTGRES_INITDB_ARGS: "-c shared_buffers=256MB -c effective_cache_size=512MB"
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=512MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - arquivamais_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: processo_pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arquivamais_app
+    restart: unless-stopped
     ports:
-      - "8080:80"
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - arquivamais_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
-  pgdata:
+  postgres_data:
+
+networks:
+  arquivamais_network:
+    driver: bridge
