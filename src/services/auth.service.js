@@ -54,7 +54,11 @@ async function generateTokens(userId, email, role) {
 }
 
 async function loginUsuario(email, senha) {
-  const usuario = await Usuario.findOne({ where: { email, ativo: true } });
+  // Forçar carregar o campo senha explicitamente
+  const usuario = await Usuario.findOne({ 
+    where: { email, ativo: true },
+    attributes: ['id', 'nome', 'email', 'senha', 'role', 'orgao_id', 'ativo', 'refresh_token', 'refresh_token_expires']
+  });
   
   console.log('=== DEBUG LOGIN ===');
   console.log('Email:', email);
@@ -63,8 +67,8 @@ async function loginUsuario(email, senha) {
   if (usuario) {
     console.log('Usuario ID:', usuario.id);
     console.log('Usuario nome:', usuario.nome);
-    console.log('Senha no banco:', usuario.senha);
-    console.log('Tipo senha:', typeof usuario.senha);
+    console.log('Senha no banco existe:', usuario.senha ? 'Sim' : 'Não');
+    console.log('Senha no banco length:', usuario.senha ? usuario.senha.length : 0);
   }
   console.log('==================');
 
