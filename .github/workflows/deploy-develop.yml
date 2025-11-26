@@ -15,52 +15,58 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add VPS to known hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy Backend
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          STAGING_ENV: ${{ secrets.STAGING_BACKEND_ENV }}
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << 'ENDSSH'
             set -e
             
             # Criar diretório staging se não existir
             sudo mkdir -p /opt/staging/servidor
             sudo chown $USER:$USER /opt/staging/servidor
             
-            # Clonar ou atualizar repositório
-            if [ ! -d "/opt/staging/servidor/.git" ]; then
-              git clone https://github.com/${{ github.repository }}.git /opt/staging/servidor
-            fi
-            
             cd /opt/staging/servidor
+            
+            # Clonar ou atualizar repositório
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/arquiva-mais/servidor.git .
+            fi
             
             # Atualizar código
             git fetch --all
             git checkout develop
             git pull origin develop
             
-            # Copiar variáveis de ambiente
-            echo "${{ secrets.STAGING_BACKEND_ENV }}" > .env
-            
-            # Build e restart containers
-            docker compose down
-            docker compose build --no-cache
-            docker compose up -d
+            # Parar containers antigos
+            docker compose -f docker-compose.staging.yml down || true
             
             # Aguardar serviço ficar pronto
             sleep 10
             
             # Verificar saúde do serviço
-            docker compose ps
+            docker compose -f docker-compose.staging.yml ps
             
             echo "✅ Backend staging deployed successfully!"
-          EOF
+          ENDSSH
+          
+          # Criar .env via SSH separadamente (para evitar problemas com heredoc)
+          ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "cd /opt/staging/servidor && cat > .env << 'ENVEOF'
+$STAGING_ENV
+ENVEOF"
+          
+          # Build e subir containers
+          ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "cd /opt/staging/servidor && docker compose -f docker-compose.staging.yml up -d --build"
 
   deploy-frontend:
     name: Deploy Frontend to Staging
