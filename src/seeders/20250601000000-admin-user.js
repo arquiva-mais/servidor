@@ -54,7 +54,11 @@ module.exports = {
     console.log('✅ Usuário admin criado com sucesso!');
     console.log('📧 Email: admin@arquivamais.com');
     console.log('🔑 Senha: admin123');
-    console.log('⚠️  IMPORTANTE: Altere a senha após o primeiro login!');
+    console.log('');
+    console.log('⚠️  SEGURANÇA CRÍTICA:');
+    console.log('   1. ALTERE A SENHA IMEDIATAMENTE após o primeiro login!');
+    console.log('   2. Use uma senha forte (min. 12 caracteres, letras, números e símbolos)');
+    console.log('   3. Não compartilhe estas credenciais');
     console.log('========================================');
   },
 
