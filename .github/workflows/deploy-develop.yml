@@ -1,0 +1,139 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend to Staging
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Backend
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            
+            # Criar diretório staging se não existir
+            sudo mkdir -p /opt/staging/servidor
+            sudo chown $USER:$USER /opt/staging/servidor
+            
+            # Clonar ou atualizar repositório
+            if [ ! -d "/opt/staging/servidor/.git" ]; then
+              git clone https://github.com/${{ github.repository }}.git /opt/staging/servidor
+            fi
+            
+            cd /opt/staging/servidor
+            
+            # Atualizar código
+            git fetch --all
+            git checkout develop
+            git pull origin develop
+            
+            # Copiar variáveis de ambiente
+            echo "${{ secrets.STAGING_BACKEND_ENV }}" > .env
+            
+            # Build e restart containers
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+            
+            # Aguardar serviço ficar pronto
+            sleep 10
+            
+            # Verificar saúde do serviço
+            docker compose ps
+            
+            echo "✅ Backend staging deployed successfully!"
+          EOF
+
+  deploy-frontend:
+    name: Deploy Frontend to Staging
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Frontend
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            
+            # Criar diretório staging se não existir
+            sudo mkdir -p /opt/staging/arquivamais-frontend
+            sudo chown $USER:$USER /opt/staging/arquivamais-frontend
+            
+            # Clonar ou atualizar repositório
+            if [ ! -d "/opt/staging/arquivamais-frontend/.git" ]; then
+              git clone https://github.com/arquiva-mais/arquivamais-frontend.git /opt/staging/arquivamais-frontend
+            fi
+            
+            cd /opt/staging/arquivamais-frontend
+            
+            # Atualizar código
+            git fetch --all
+            git checkout develop
+            git pull origin develop
+            
+            # Copiar variáveis de ambiente
+            echo "${{ secrets.STAGING_FRONTEND_ENV }}" > .env
+            
+            # Build e restart containers
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+            
+            # Aguardar serviço ficar pronto
+            sleep 10
+            
+            # Verificar saúde do serviço
+            docker compose ps
+            
+            echo "✅ Frontend staging deployed successfully!"
+          EOF
+
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always()
+    
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### URLs de Staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: https://dev.arquivamaispenedo.online" >> $GITHUB_STEP_SUMMARY
+          echo "- API: https://api-dev.arquivamaispenedo.online" >> $GITHUB_STEP_SUMMARY
