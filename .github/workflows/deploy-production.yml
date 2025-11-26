@@ -157,6 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-backend, deploy-frontend, health-check]
     if: always()
+    permissions: {}
     
     steps:
       - name: Deployment Summary
