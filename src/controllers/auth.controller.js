@@ -67,6 +67,19 @@ exports.listarUsuarios = async (req, res) => {
   }
 };
 
+exports.atualizarUsuario = async (req, res) => {
+  try {
+    const usuarioId = parseInt(req.params.id);
+    const usuarioAtualizado = await authService.atualizarUsuario(usuarioId, req.body);
+    res.json(usuarioAtualizado);
+  } catch (error) {
+    if (error.message === 'Usuário não encontrado') {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // Adicionar método para verificar token
 exports.verify = async (req, res) => {
   res.json({
