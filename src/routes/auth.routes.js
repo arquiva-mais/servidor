@@ -10,6 +10,7 @@ router.post('/logout', verificarToken, authController.logout);
 router.get('/perfil', verificarToken, authController.perfil);
 router.get('/verify', verificarToken, authController.verify);
 router.get('/usuarios', verificarToken, verificarRole(['admin']), authController.listarUsuarios);
+router.put('/usuarios/:id', verificarToken, verificarRole(['admin']), authController.atualizarUsuario);
 
 
 module.exports = router;

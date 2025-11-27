@@ -148,5 +148,43 @@ async function listarUsuarios() {
   });
 }
 
+async function atualizarUsuario(usuarioId, dados) {
+  const usuario = await Usuario.findByPk(usuarioId);
+  
+  if (!usuario) {
+    throw new Error('Usuário não encontrado');
+  }
 
-module.exports = { registrarUsuario, loginUsuario, listarUsuarios, refreshToken, logout };
+  const camposPermitidos = {};
+  
+  if (dados.nome) camposPermitidos.nome = dados.nome;
+  if (dados.email) {
+    const emailExiste = await Usuario.findOne({ 
+      where: { 
+        email: dados.email,
+        id: { [require('sequelize').Op.ne]: usuarioId }
+      } 
+    });
+    if (emailExiste) {
+      throw new Error('Email já está em uso');
+    }
+    camposPermitidos.email = dados.email;
+  }
+  if (dados.role) camposPermitidos.role = dados.role;
+  if (dados.orgao_id !== undefined) camposPermitidos.orgao_id = dados.orgao_id;
+  if (typeof dados.ativo === 'boolean') camposPermitidos.ativo = dados.ativo;
+
+  await usuario.update(camposPermitidos);
+
+  return {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    role: usuario.role,
+    orgao_id: usuario.orgao_id,
+    ativo: usuario.ativo
+  };
+}
+
+
+module.exports = { registrarUsuario, loginUsuario, listarUsuarios, atualizarUsuario, refreshToken, logout };
