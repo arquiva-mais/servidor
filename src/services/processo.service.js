@@ -11,7 +11,7 @@ async function listarProcessos(filtros, paginacao = {}) {
   if (busca) {
     where[Op.or] = [
       { numero_processo: { [Op.iLike]: `%${busca}%` } },
-      { interessado: { [Op.iLike]: `%${busca}%` } },
+      { credor: { [Op.iLike]: `%${busca}%` } },
       { objeto: { [Op.iLike]: `%${busca}%` } },
       { setor_atual: { [Op.iLike]: `%${busca}%` } },
     ];
@@ -34,7 +34,8 @@ async function listarProcessos(filtros, paginacao = {}) {
   const fieldMapping = {
     'numero_processo': 'numero_processo',
     'objeto': 'objeto',
-    'interessado': 'interessado',
+    'credor': 'credor',
+    'interessado': 'credor', // Mapeamento para compatibilidade com frontend antigo
     'orgao_gerador': 'orgao_gerador',
     'responsavel': 'responsavel',
     'setor_atual': 'setor_atual',
@@ -146,22 +147,73 @@ async function criarProcesso(dados, usuarioLogado) {
 }
 
 async function atualizarProcesso(id, dados, user_logado) {
-  const processo = await Processo.findByPk(id);
-  if (!processo) throw new Error('Processo não encontrado');
-  const valores = ['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
-    acc[key] = parseFloat(dados[key]) || 0;
-    return acc;
-  }, {});
+  try {
+    const processo = await Processo.findByPk(id);
+    if (!processo) throw new Error('Processo não encontrado');
 
-  const total = valores.valor_convenio + valores.valor_recurso_proprio + valores.valor_royalties;
+    // Cria objeto de atualização apenas com campos definidos
+    const dadosAtualizacao = {};
 
-  return processo.update({
-    ...dados,
-    ...valores,
-    total,
-    data_atualizacao: new Date(),
-    update_for: user_logado.nome
-  });
+    // Copia todos os campos de dados, exceto os valores financeiros
+    Object.keys(dados).forEach(key => {
+      if (!['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].includes(key)) {
+        dadosAtualizacao[key] = dados[key];
+      }
+    });
+
+    // Processa valores financeiros apenas se foram enviados
+    let hasValueUpdate = false;
+
+    const hasValorConvenio = dados.valor_convenio !== undefined && dados.valor_convenio !== null && dados.valor_convenio !== '';
+    const hasValorRecursoProprio = dados.valor_recurso_proprio !== undefined && dados.valor_recurso_proprio !== null && dados.valor_recurso_proprio !== '';
+    const hasValorRoyalties = dados.valor_royalties !== undefined && dados.valor_royalties !== null && dados.valor_royalties !== '';
+
+    if (hasValorConvenio) {
+      dadosAtualizacao.valor_convenio = parseFloat(dados.valor_convenio) || 0;
+      hasValueUpdate = true;
+    }
+    if (hasValorRecursoProprio) {
+      dadosAtualizacao.valor_recurso_proprio = parseFloat(dados.valor_recurso_proprio) || 0;
+      hasValueUpdate = true;
+    }
+    if (hasValorRoyalties) {
+      dadosAtualizacao.valor_royalties = parseFloat(dados.valor_royalties) || 0;
+      hasValueUpdate = true;
+    }
+
+    // Recalcula o total apenas se houver atualização de valores
+    if (hasValueUpdate) {
+      const vConvenio = dadosAtualizacao.valor_convenio !== undefined ? dadosAtualizacao.valor_convenio : processo.valor_convenio;
+      const vRecurso = dadosAtualizacao.valor_recurso_proprio !== undefined ? dadosAtualizacao.valor_recurso_proprio : processo.valor_recurso_proprio;
+      const vRoyalties = dadosAtualizacao.valor_royalties !== undefined ? dadosAtualizacao.valor_royalties : processo.valor_royalties;
+      dadosAtualizacao.total = vConvenio + vRecurso + vRoyalties;
+    }
+
+    // Adiciona metadados de atualização
+    dadosAtualizacao.data_atualizacao = new Date();
+    dadosAtualizacao.update_for = user_logado.nome;
+
+    return await processo.update(dadosAtualizacao);
+  } catch (error) {
+    console.error('Erro ao atualizar processo:', error);
+    throw error;
+  }
+}
+
+async function atualizarSetor(id, setor_atual, user_logado) {
+  try {
+    const processo = await Processo.findByPk(id);
+    if (!processo) throw new Error('Processo não encontrado');
+
+    return await processo.update({
+      setor_atual,
+      data_atualizacao: new Date(),
+      update_for: user_logado.nome
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar setor:', error);
+    throw error;
+  }
 }
 
 async function deletarProcesso(id) {
@@ -178,4 +230,4 @@ async function deletarProcesso(id) {
   return { message: 'Processo deletado com sucesso' };
 }
 
-module.exports = { listarProcessos, listarProcessoPorId, criarProcesso, atualizarProcesso, deletarProcesso, listarTodosProcessosPorOrgao };
+module.exports = { listarProcessos, listarProcessoPorId, criarProcesso, atualizarProcesso, atualizarSetor, deletarProcesso, listarTodosProcessosPorOrgao };
