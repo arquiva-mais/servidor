@@ -84,6 +84,32 @@ exports.atualizar = async (req, res) => {
   }
 };
 
+exports.atualizarSetor = async (req, res) => {
+  try {
+    const { setor_atual } = req.body;
+    
+    if (!setor_atual) {
+      return res.status(400).json({ error: 'Setor atual é obrigatório' });
+    }
+
+    const processo = await service.listarProcessoPorId(req.params.id);
+
+    if (!processo) {
+      return res.status(404).json({ error: 'Processo não encontrado' });
+    }
+
+    if (processo.orgao_id !== req.usuario.orgao_id) {
+      return res.status(403).json({ error: 'Acesso negado a este processo' });
+    }
+
+    const processoAtualizado = await service.atualizarSetor(req.params.id, setor_atual, req.usuario);
+    res.json(processoAtualizado);
+  } catch (err) {
+    console.error('Erro ao atualizar setor:', err);
+    res.status(400).json({ error: err.message });
+  }
+};
+
 exports.deletar = async (req, res) => {
   try {
     //const processo = await service.listarProcessoPorId(req.params.id);
@@ -101,4 +127,4 @@ exports.deletar = async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-};;
+};
