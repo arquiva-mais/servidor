@@ -14,7 +14,9 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://arquivamaispenedo.online', 
-  'http://arquivamaispenedo.online'
+  'http://arquivamaispenedo.online',
+  'https://www.arquivamaispenedo.online',
+  'http://www.arquivamaispenedo.online'
 ];
 
 // Configurar CORS para produção
