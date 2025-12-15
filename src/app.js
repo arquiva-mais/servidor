@@ -11,7 +11,7 @@ require('./relations/models.relations');
 const app = express();
 
 // Configurar trust proxy para Nginx/reverse proxy
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 const allowedOrigins = [
   'http://localhost:3000',
