@@ -33,6 +33,38 @@ const Processo = sequelize.define('Processo', {
       model: 'orgaos',
       key: 'id'
     }
+  },
+  objeto_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'objetos',
+      key: 'id'
+    }
+  },
+  credor_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'credores',
+      key: 'id'
+    }
+  },
+  orgao_gerador_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'orgaos_geradores',
+      key: 'id'
+    }
+  },
+  setor_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'setores',
+      key: 'id'
+    }
   }
 }, {
   tableName: 'processos',

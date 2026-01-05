@@ -1,5 +1,10 @@
 const Processo = require('../models/processo.model');
 const { Op } = require('sequelize');
+const domainService = require('./domain.service');
+const Objeto = require('../models/objeto.model');
+const Credor = require('../models/credor.model');
+const OrgaoGerador = require('../models/orgaoGerador.model');
+const Setor = require('../models/setor.model');
 
 async function listarProcessos(filtros, paginacao = {}) {
   const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status } = filtros;
@@ -53,11 +58,33 @@ async function listarProcessos(filtros, paginacao = {}) {
 
   const resultado = await Processo.findAndCountAll({
     where,
-    include: {
-      model: require('../models/orgao.model'),
-      as: 'orgao',
-      attributes: ['id', 'nome', 'tipo']
-    },
+    include: [
+      {
+        model: require('../models/orgao.model'),
+        as: 'orgao',
+        attributes: ['id', 'nome', 'tipo']
+      },
+      {
+        model: Objeto,
+        as: 'objetoLookup',
+        attributes: ['id', 'nome']
+      },
+      {
+        model: Credor,
+        as: 'credorLookup',
+        attributes: ['id', 'nome']
+      },
+      {
+        model: OrgaoGerador,
+        as: 'orgaoGeradorLookup',
+        attributes: ['id', 'nome']
+      },
+      {
+        model: Setor,
+        as: 'setorLookup',
+        attributes: ['id', 'nome']
+      }
+    ],
     order: [[orderField, orderDirection]],
     limit: parseInt(limit),
     offset: parseInt(offset)
@@ -104,11 +131,33 @@ async function listarTodosProcessosPorOrgao(orgao_id) {
 async function listarProcessoPorId(processo_id) {
   return await Processo.findOne({
     where: { id: processo_id },
-    include: {
-      model: require('../models/orgao.model'),
-      as: 'orgao',
-      attributes: ['id', 'nome', 'tipo']
-    }
+    include: [
+      {
+        model: require('../models/orgao.model'),
+        as: 'orgao',
+        attributes: ['id', 'nome', 'tipo']
+      },
+      {
+        model: Objeto,
+        as: 'objetoLookup',
+        attributes: ['id', 'nome']
+      },
+      {
+        model: Credor,
+        as: 'credorLookup',
+        attributes: ['id', 'nome']
+      },
+      {
+        model: OrgaoGerador,
+        as: 'orgaoGeradorLookup',
+        attributes: ['id', 'nome']
+      },
+      {
+        model: Setor,
+        as: 'setorLookup',
+        attributes: ['id', 'nome']
+      }
+    ]
   });
 }
 
@@ -129,6 +178,12 @@ async function criarProcesso(dados, usuarioLogado) {
 
     const total = valores.valor_convenio + valores.valor_recurso_proprio + valores.valor_royalties;
 
+    // Processar campos de domínio usando connectOrCreate
+    const objeto_id = await domainService.connectOrCreate(Objeto, dados.objeto);
+    const credor_id = await domainService.connectOrCreate(Credor, dados.credor);
+    const orgao_gerador_id = await domainService.connectOrCreate(OrgaoGerador, dados.orgao_gerador);
+    const setor_id = await domainService.connectOrCreate(Setor, dados.setor_atual);
+
     const dadosProcesso = {
       ...dados,
       ...valores,
@@ -137,6 +192,10 @@ async function criarProcesso(dados, usuarioLogado) {
       concluido: false,
       total,
       data_entrada: dados.data_entrada || new Date().toISOString().split('T')[0],
+      objeto_id,
+      credor_id,
+      orgao_gerador_id,
+      setor_id
     };
 
     return await Processo.create(dadosProcesso);
@@ -154,9 +213,27 @@ async function atualizarProcesso(id, dados, user_logado) {
     // Cria objeto de atualização apenas com campos definidos
     const dadosAtualizacao = {};
 
-    // Copia todos os campos de dados, exceto os valores financeiros
+    // Processar campos de domínio se fornecidos
+    if (dados.objeto !== undefined) {
+      const objeto_id = await domainService.connectOrCreate(Objeto, dados.objeto);
+      if (objeto_id) dadosAtualizacao.objeto_id = objeto_id;
+    }
+    if (dados.credor !== undefined) {
+      const credor_id = await domainService.connectOrCreate(Credor, dados.credor);
+      if (credor_id) dadosAtualizacao.credor_id = credor_id;
+    }
+    if (dados.orgao_gerador !== undefined) {
+      const orgao_gerador_id = await domainService.connectOrCreate(OrgaoGerador, dados.orgao_gerador);
+      if (orgao_gerador_id) dadosAtualizacao.orgao_gerador_id = orgao_gerador_id;
+    }
+    if (dados.setor_atual !== undefined) {
+      const setor_id = await domainService.connectOrCreate(Setor, dados.setor_atual);
+      if (setor_id) dadosAtualizacao.setor_id = setor_id;
+    }
+
+    // Copia todos os campos de dados, exceto os valores financeiros e campos de domínio
     Object.keys(dados).forEach(key => {
-      if (!['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].includes(key)) {
+      if (!['valor_convenio', 'valor_recurso_proprio', 'valor_royalties', 'objeto', 'credor', 'orgao_gerador', 'setor_atual'].includes(key)) {
         dadosAtualizacao[key] = dados[key];
       }
     });
