@@ -92,8 +92,41 @@ async function listarProcessos(filtros, paginacao = {}) {
 
   const totalPaginas = Math.ceil(resultado.count / limit);
 
+  const processosComDias = resultado.rows.map(p => {
+    const processo = p.toJSON();
+    
+    // Se o processo estiver concluído ou cancelado, não calcula dias no setor
+    if (processo.status === 'concluido' || processo.status === 'cancelado') {
+      processo.dias_no_setor = null;
+      return processo;
+    }
+
+    let dataRef = processo.data_ultima_movimentacao;
+    if (!dataRef) {
+       dataRef = processo.createdAt || processo.data_entrada;
+    }
+
+    if (dataRef) {
+      const now = new Date();
+      const moveDate = new Date(dataRef);
+      
+      // Resetar horas para comparar apenas as datas (dias corridos)
+      // Isso garante que "ontem" seja sempre 1 dia, independente da hora
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dateRef = new Date(moveDate.getFullYear(), moveDate.getMonth(), moveDate.getDate());
+      
+      const diffTime = Math.abs(today - dateRef);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      processo.dias_no_setor = diffDays;
+    } else {
+      processo.dias_no_setor = 0;
+    }
+    
+    return processo;
+  });
+
   return {
-    processos: resultado.rows,
+    processos: processosComDias,
     pagination: {
       currentPage: parseInt(page),
       totalPages: totalPaginas,
@@ -217,18 +250,27 @@ async function atualizarProcesso(id, dados, user_logado) {
     if (dados.objeto !== undefined) {
       const objeto_id = await domainService.connectOrCreate(Objeto, dados.objeto);
       if (objeto_id) dadosAtualizacao.objeto_id = objeto_id;
+      dadosAtualizacao.objeto = dados.objeto;
     }
     if (dados.credor !== undefined) {
       const credor_id = await domainService.connectOrCreate(Credor, dados.credor);
       if (credor_id) dadosAtualizacao.credor_id = credor_id;
+      dadosAtualizacao.credor = dados.credor;
     }
     if (dados.orgao_gerador !== undefined) {
       const orgao_gerador_id = await domainService.connectOrCreate(OrgaoGerador, dados.orgao_gerador);
       if (orgao_gerador_id) dadosAtualizacao.orgao_gerador_id = orgao_gerador_id;
+      dadosAtualizacao.orgao_gerador = dados.orgao_gerador;
     }
     if (dados.setor_atual !== undefined) {
       const setor_id = await domainService.connectOrCreate(Setor, dados.setor_atual);
       if (setor_id) dadosAtualizacao.setor_id = setor_id;
+      dadosAtualizacao.setor_atual = dados.setor_atual;
+      
+      // Se o setor mudou, atualiza a data de última movimentação
+      if (dados.setor_atual !== processo.setor_atual) {
+        dadosAtualizacao.data_ultima_movimentacao = new Date();
+      }
     }
 
     // Copia todos os campos de dados, exceto os valores financeiros e campos de domínio
@@ -282,11 +324,23 @@ async function atualizarSetor(id, setor_atual, user_logado) {
     const processo = await Processo.findByPk(id);
     if (!processo) throw new Error('Processo não encontrado');
 
-    return await processo.update({
+    const updateData = {
       setor_atual,
       data_atualizacao: new Date(),
       update_for: user_logado.nome
-    });
+    };
+
+    // Atualizar setor_id usando o domainService
+    const setor_id = await domainService.connectOrCreate(Setor, setor_atual);
+    if (setor_id) {
+      updateData.setor_id = setor_id;
+    }
+
+    if (setor_atual !== processo.setor_atual) {
+      updateData.data_ultima_movimentacao = new Date();
+    }
+
+    return await processo.update(updateData);
   } catch (error) {
     console.error('Erro ao atualizar setor:', error);
     throw error;
