@@ -11,6 +11,7 @@ const domainRoutes = require('./routes/domain.routes')
 // Importar controllers de lookup tables
 const domainController = require('./controllers/domain.controller')
 const { verificarToken } = require('./middleware/auth.middleware')
+const { apiLimiter } = require('./middleware/rateLimiters');
 
 require('./relations/models.relations');
 
@@ -18,6 +19,9 @@ const app = express();
 
 // Configurar trust proxy para Nginx/reverse proxy
 app.set('trust proxy', 1);
+
+// Aplicar Rate Limiting global
+app.use(apiLimiter);
 
 const allowedOrigins = [
   'http://localhost:3000',
