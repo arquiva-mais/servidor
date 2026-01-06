@@ -37,15 +37,17 @@ async function registrarUsuario(dados) {
 }
 
 async function generateTokens(userId, email, role) {
+  const { JWT_SECRET } = require('../middleware/auth.middleware');
+  
   const accessToken = jwt.sign(
     { id: userId, email, role },
-    process.env.JWT_SECRET,
-    { expiresIn: '40m' }
+    JWT_SECRET, 
+    { expiresIn: '15m' } 
   );
 
   const refreshToken = jwt.sign(
     { id: userId, type: 'refresh' },
-    process.env.JWT_REFRESH_SECRET,
+    process.env.JWT_REFRESH_SECRET || 'seu-jwt-refresh-secret',
     { expiresIn: '7d' }
   );
   

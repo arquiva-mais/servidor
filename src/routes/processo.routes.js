@@ -16,9 +16,9 @@ router.use(verificarToken)
 router.get('/', controllerProcessos.listar);
 router.get('/listar-todos', controllerProcessos.listarTodosPorOrgao)
 router.get('/listar-por-id', controllerProcessos.listarPorId)
-router.post('/', verificarRole(['admin']), controllerProcessos.criar);
+router.post('/', verificarRole(['admin', 'user']), controllerProcessos.criar);
 router.put('/:id', verificarRole(['admin', 'user']) ,controllerProcessos.atualizar);
 router.patch('/:id/setor', verificarRole(['admin', 'user']), controllerProcessos.atualizarSetor);
-router.delete('/:id', verificarRole(['admin']), controllerProcessos.deletar);
+router.delete('/:id', verificarRole(['admin', 'user']), controllerProcessos.deletar);
 
 module.exports = router;

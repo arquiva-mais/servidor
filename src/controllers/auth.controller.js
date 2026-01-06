@@ -15,7 +15,17 @@ exports.login = async (req, res) => {
     // Aceitar tanto 'senha' quanto 'password' para compatibilidade
     const senhaFinal = senha || password;
     const resultado = await authService.loginUsuario(email, senhaFinal);
-    res.json(resultado);
+    
+    // Setar o Refresh Token num cookie HttpOnly
+    res.cookie('refreshToken', resultado.refreshToken, {
+       httpOnly: true,
+       secure: process.env.NODE_ENV === 'production', 
+       sameSite: 'strict', 
+       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 dias
+    });
+
+    const { refreshToken, ...responseWithoutRefresh } = resultado;
+    res.json(responseWithoutRefresh);
   } catch (error) {
     res.status(401).json({ error: error.message });
   }
@@ -35,7 +45,7 @@ exports.perfil = async (req, res) => {
 
 exports.refresh = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({ error: 'Refresh token obrigatório' });
@@ -43,7 +53,15 @@ exports.refresh = async (req, res) => {
 
     const tokens = await authService.refreshToken(refreshToken);
 
-    res.json(tokens);
+    // Rotacionar refresh token
+    res.cookie('refreshToken', tokens.refreshToken, {
+       httpOnly: true,
+       secure: process.env.NODE_ENV === 'production',
+       sameSite: 'strict',
+       maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.json({ accessToken: tokens.accessToken });
   } catch (error) {
     res.status(401).json({ error: error.message });
   }
@@ -51,7 +69,10 @@ exports.refresh = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    await authService.logout(req.usuario.id); // Usar req.usuario (não req.user)
+    if (req.usuario) {
+        await authService.logout(req.usuario.id);
+    }
+    res.clearCookie('refreshToken'); 
     res.json({ message: 'Logout realizado com sucesso' });
   } catch (error) {
     res.status(500).json({ error: error.message });

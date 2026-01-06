@@ -17,7 +17,23 @@ exports.listar = async (req, res) => {
     };
 
     const resultado = await service.listarProcessos(filtros, paginacao);
-    res.json(resultado);
+    
+    // Transformar os dados para o formato esperado pelo frontend
+    const processosTransformados = resultado.processos.map(p => {
+      const processo = p.toJSON ? p.toJSON() : p;
+      return {
+        ...processo,
+        objeto: processo.objetoLookup?.nome || processo.objeto,
+        credor: processo.credorLookup?.nome || processo.credor,
+        orgao_gerador: processo.orgaoGeradorLookup?.nome || processo.orgao_gerador,
+        setor_atual: processo.setorLookup?.nome || processo.setor_atual
+      };
+    });
+    
+    res.json({
+      ...resultado,
+      processos: processosTransformados
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao listar processos' });
@@ -48,7 +64,17 @@ exports.listarPorId = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado a este processo' });
     }
 
-    res.json(processo);
+    // Transformar os dados para o formato esperado pelo frontend
+    const processoData = processo.toJSON ? processo.toJSON() : processo;
+    const processoTransformado = {
+      ...processoData,
+      objeto: processoData.objetoLookup?.nome || processoData.objeto,
+      credor: processoData.credorLookup?.nome || processoData.credor,
+      orgao_gerador: processoData.orgaoGeradorLookup?.nome || processoData.orgao_gerador,
+      setor_atual: processoData.setorLookup?.nome || processoData.setor_atual
+    };
+
+    res.json(processoTransformado);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar processo' });
   }
