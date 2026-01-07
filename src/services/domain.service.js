@@ -37,7 +37,8 @@ async function listObjects(search = '') {
   const where = search ? { nome: { [Op.iLike]: `%${search}%` } } : {};
   return await Objeto.findAll({
     where,
-    order: [['nome', 'ASC']]
+    order: [['nome', 'ASC']],
+    limit: 50
   });
 }
 
@@ -84,7 +85,8 @@ async function listCreditors(search = '') {
   const where = search ? { nome: { [Op.iLike]: `%${search}%` } } : {};
   return await Credor.findAll({
     where,
-    order: [['nome', 'ASC']]
+    order: [['nome', 'ASC']],
+    limit: 50
   });
 }
 
@@ -130,7 +132,8 @@ async function listBodies(search = '') {
   const where = search ? { nome: { [Op.iLike]: `%${search}%` } } : {};
   return await OrgaoGerador.findAll({
     where,
-    order: [['nome', 'ASC']]
+    order: [['nome', 'ASC']],
+    limit: 50
   });
 }
 
@@ -175,7 +178,8 @@ async function listSectors(search = '') {
   const where = search ? { nome: { [Op.iLike]: `%${search}%` } } : {};
   return await Setor.findAll({
     where,
-    order: [['nome', 'ASC']]
+    order: [['nome', 'ASC']],
+    limit: 50
   });
 }
 

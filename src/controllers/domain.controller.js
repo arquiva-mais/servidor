@@ -3,8 +3,8 @@ const service = require('../services/domain.service');
 // ===== OBJECTS =====
 exports.listObjects = async (req, res) => {
   try {
-    const { search } = req.query;
-    const objects = await service.listObjects(search);
+    const { search, busca } = req.query;
+    const objects = await service.listObjects(search || busca);
     res.json(objects);
   } catch (err) {
     console.error(err);
@@ -55,8 +55,8 @@ exports.deleteObject = async (req, res) => {
 // ===== CREDITORS =====
 exports.listCreditors = async (req, res) => {
   try {
-    const { search } = req.query;
-    const creditors = await service.listCreditors(search);
+    const { search, busca } = req.query;
+    const creditors = await service.listCreditors(search || busca);
     res.json(creditors);
   } catch (err) {
     console.error(err);
@@ -107,8 +107,8 @@ exports.deleteCreditor = async (req, res) => {
 // ===== BODIES =====
 exports.listBodies = async (req, res) => {
   try {
-    const { search } = req.query;
-    const bodies = await service.listBodies(search);
+    const { search, busca } = req.query;
+    const bodies = await service.listBodies(search || busca);
     res.json(bodies);
   } catch (err) {
     console.error(err);
@@ -159,8 +159,8 @@ exports.deleteBody = async (req, res) => {
 // ===== SECTORS =====
 exports.listSectors = async (req, res) => {
   try {
-    const { search } = req.query;
-    const sectors = await service.listSectors(search);
+    const { search, busca } = req.query;
+    const sectors = await service.listSectors(search || busca);
     res.json(sectors);
   } catch (err) {
     console.error(err);
