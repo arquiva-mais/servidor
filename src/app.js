@@ -20,9 +20,6 @@ const app = express();
 // Configurar trust proxy para Nginx/reverse proxy
 app.set('trust proxy', 1);
 
-// Aplicar Rate Limiting global
-app.use(apiLimiter);
-
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -41,6 +38,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Aplicar Rate Limiting global
+app.use(apiLimiter);
 app.use(cookieParser());
 app.use(express.json());
 
