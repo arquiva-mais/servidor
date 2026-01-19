@@ -112,7 +112,7 @@ exports.atualizar = async (req, res) => {
 
 exports.atualizarSetor = async (req, res) => {
   try {
-    const { setor_atual } = req.body;
+    const { setor_atual, data_tramitacao } = req.body;
     
     if (!setor_atual) {
       return res.status(400).json({ error: 'Setor atual é obrigatório' });
@@ -128,7 +128,7 @@ exports.atualizarSetor = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado a este processo' });
     }
 
-    const processoAtualizado = await service.atualizarSetor(req.params.id, setor_atual, req.usuario);
+    const processoAtualizado = await service.atualizarSetor(req.params.id, setor_atual, req.usuario, data_tramitacao);
     res.json(processoAtualizado);
   } catch (err) {
     console.error('Erro ao atualizar setor:', err);
