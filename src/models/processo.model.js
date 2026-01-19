@@ -4,7 +4,8 @@ const { StatusProcesso } = require('../enums/processo.enum')
 
 const Processo = sequelize.define('Processo', {
   numero_processo: { type: DataTypes.STRING, allowNull: false, unique: true },
-  data_entrada: DataTypes.DATEONLY,
+  data_criacao_docgo: { type: DataTypes.DATEONLY, allowNull: true },
+  data_entrada: { type: DataTypes.DATEONLY }, // Mantido como data de entrada no setor/chegada
   competencia: { type: DataTypes.STRING, allowNull: true },
   objeto: { type: DataTypes.STRING, allowNull: false },
   credor: { type: DataTypes.STRING, allowNull: false },

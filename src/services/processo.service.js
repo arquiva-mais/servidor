@@ -113,8 +113,11 @@ async function listarProcessos(filtros, paginacao = {}) {
     }
 
     let dataRef = processo.data_ultima_movimentacao;
+    
+    // Se não houver movimentação registrada, usa data_entrada (chegada no setor/orgao)
+    // Se não houver data_entrada, usa createdAt como fallback
     if (!dataRef) {
-       dataRef = processo.createdAt || processo.data_entrada;
+       dataRef = processo.data_entrada || processo.createdAt;
     }
 
     if (dataRef) {
@@ -239,7 +242,9 @@ async function criarProcesso(dados, usuarioLogado) {
       responsavel: usuarioLogado.nome,
       concluido: false,
       total,
+      data_criacao_docgo: dados.data_criacao_docgo || null,
       data_entrada: dados.data_entrada || new Date().toISOString().split('T')[0],
+      data_ultima_movimentacao: dados.data_entrada || new Date(), // Inicializa a movimentação com a data de entrada no setor
       objeto_id,
       credor_id,
       orgao_gerador_id,
@@ -286,6 +291,21 @@ async function atualizarProcesso(id, dados, user_logado) {
       if (credor_id) dadosAtualizacao.credor_id = credor_id;
       dadosAtualizacao.credor = dados.credor;
     }
+    
+    // Atualiza data_criacao_docgo se fornecido
+    if (dados.data_criacao_docgo !== undefined) {
+      dadosAtualizacao.data_criacao_docgo = dados.data_criacao_docgo === '' ? null : dados.data_criacao_docgo;
+    }
+    
+    // Atualiza data_entrada (chegada no setor) se fornecido
+    if (dados.data_entrada !== undefined) {
+      dadosAtualizacao.data_entrada = dados.data_entrada;
+      
+      // Se não houver movimentação posterior explícita e for um ajuste inicial, 
+      // talvez faça sentido atualizar a data de movimentação também, 
+      // mas vamos manter o comportamento padrão de atualizar movimentação apenas na troca de setor.
+    }
+
     if (dados.orgao_gerador !== undefined) {
       const orgao_gerador_id = await domainService.connectOrCreate(OrgaoGerador, dados.orgao_gerador);
       if (orgao_gerador_id) dadosAtualizacao.orgao_gerador_id = orgao_gerador_id;
@@ -366,8 +386,10 @@ async function atualizarSetor(id, setor_atual, user_logado, data_tramitacao) {
     }
 
     if (setor_atual !== processo.setor_atual) {
-      // Se data_tramitacao for fornecida, usa ela. Senão, usa agora.
-      updateData.data_ultima_movimentacao = data_tramitacao ? new Date(data_tramitacao) : new Date();
+      // Se a data da tramitação foi fornecida, atualiza data_entrada e data_ultima_movimentacao para essa data
+      const dataMovimentacao = data_tramitacao ? new Date(data_tramitacao) : new Date();
+      updateData.data_ultima_movimentacao = dataMovimentacao;
+      updateData.data_entrada = dataMovimentacao; // Resseta a data de entrada para reiniciar a contagem de dias no novo setor
     }
 
     return await processo.update(updateData);
