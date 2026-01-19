@@ -207,6 +207,10 @@ async function listarProcessoPorId(processo_id) {
 
 async function criarProcesso(dados, usuarioLogado) {
   try {
+    if (dados.numero_processo) {
+      dados.numero_processo = dados.numero_processo.trim();
+    }
+
     const existe = await Processo.findOne({
       where: {
         numero_processo: dados.numero_processo,
@@ -253,6 +257,20 @@ async function atualizarProcesso(id, dados, user_logado) {
   try {
     const processo = await Processo.findByPk(id);
     if (!processo) throw new Error('Processo não encontrado');
+
+    if (dados.numero_processo) {
+      dados.numero_processo = dados.numero_processo.trim();
+      if (dados.numero_processo !== processo.numero_processo) {
+        const existe = await Processo.findOne({
+          where: {
+            numero_processo: dados.numero_processo,
+            orgao_id: user_logado.orgao_id,
+            id: { [Op.ne]: id }
+          }
+        });
+        if (existe) throw new Error('Já existe um processo com esse número neste órgão');
+      }
+    }
 
     // Cria objeto de atualização apenas com campos definidos
     const dadosAtualizacao = {};

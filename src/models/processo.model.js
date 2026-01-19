@@ -3,7 +3,7 @@ const sequelize = require('../config/database');
 const { StatusProcesso } = require('../enums/processo.enum')
 
 const Processo = sequelize.define('Processo', {
-  numero_processo: { type: DataTypes.STRING, allowNull: false /*unique: true*/ },
+  numero_processo: { type: DataTypes.STRING, allowNull: false, unique: true },
   data_entrada: DataTypes.DATEONLY,
   competencia: { type: DataTypes.STRING, allowNull: true },
   objeto: { type: DataTypes.STRING, allowNull: false },
