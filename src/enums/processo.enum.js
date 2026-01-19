@@ -2,7 +2,6 @@
 const StatusProcesso = Object.freeze({
    EM_ANDAMENTO: 'em_andamento',
    CONCLUIDO: 'concluido',
-   CANCELADO: 'cancelado',
 
    // Métodos utilitários
    values: () => Object.values(StatusProcesso).filter(v => typeof v === 'string'),
@@ -12,7 +11,6 @@ const StatusProcesso = Object.freeze({
      const labels = {
        'em_andamento': 'Em Andamento',
        'concluido': 'Concluído',
-       'cancelado': 'Cancelado'
      };
      return labels[value] || value;
    }

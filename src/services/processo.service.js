@@ -5,6 +5,7 @@ const Objeto = require('../models/objeto.model');
 const Credor = require('../models/credor.model');
 const OrgaoGerador = require('../models/orgaoGerador.model');
 const Setor = require('../models/setor.model');
+const StatusProcesso = require('../enums/processo.enum.js'); // Assuming usage might be needed, but strictly for the filter logic below
 
 async function listarProcessos(filtros, paginacao = {}) {
   const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status } = filtros;
@@ -26,7 +27,17 @@ async function listarProcessos(filtros, paginacao = {}) {
   if (setor) where.setor_atual = setor;
   if (objeto) where.objeto = objeto;
   if (orgao_id) where.orgao_id = orgao_id;
-  if (status) where.status = status
+
+  // Lógica de status atualizada:
+  // Se status explicitamente informado, usa ele.
+  // Se não, busca apenas os permitidos (removendo implicitamente 'cancelado' se ainda existir no DB)
+  if (status) {
+    where.status = status;
+  } else {
+    // Se nenhum status for passado, listar 'em_andamento' e 'concluido'
+    // Evita trazer 'cancelado' se houver lixo no banco
+    where.status = { [Op.in]: ['em_andamento', 'concluido'] };
+  }
 
   if (data_inicio || data_fim) {
     where.data_entrada = {};
@@ -95,8 +106,8 @@ async function listarProcessos(filtros, paginacao = {}) {
   const processosComDias = resultado.rows.map(p => {
     const processo = p.toJSON();
     
-    // Se o processo estiver concluído ou cancelado, não calcula dias no setor
-    if (processo.status === 'concluido' || processo.status === 'cancelado') {
+    // Se o processo estiver concluído, não calcula dias no setor
+    if (processo.status === 'concluido') {
       processo.dias_no_setor = null;
       return processo;
     }
