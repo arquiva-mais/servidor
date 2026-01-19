@@ -330,7 +330,7 @@ async function atualizarProcesso(id, dados, user_logado) {
   }
 }
 
-async function atualizarSetor(id, setor_atual, user_logado) {
+async function atualizarSetor(id, setor_atual, user_logado, data_tramitacao) {
   try {
     const processo = await Processo.findByPk(id);
     if (!processo) throw new Error('Processo não encontrado');
@@ -348,7 +348,8 @@ async function atualizarSetor(id, setor_atual, user_logado) {
     }
 
     if (setor_atual !== processo.setor_atual) {
-      updateData.data_ultima_movimentacao = new Date();
+      // Se data_tramitacao for fornecida, usa ela. Senão, usa agora.
+      updateData.data_ultima_movimentacao = data_tramitacao ? new Date(data_tramitacao) : new Date();
     }
 
     return await processo.update(updateData);
