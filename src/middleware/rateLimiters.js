@@ -1,7 +1,7 @@
 const rateLimit = require('express-rate-limit');
 
 // Limiter geral para toda a API (proteção contra flooding básico)
-// 15 minutos, 200 requisições por IP
+// 15 minutos, 400 requisições por IP
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 400, 
