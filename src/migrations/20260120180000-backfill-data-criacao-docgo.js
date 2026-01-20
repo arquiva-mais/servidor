@@ -15,14 +15,15 @@ module.exports = {
         UPDATE processos
         SET data_criacao_docgo = make_date(
           CAST(substring(TRIM(numero_processo) from 1 for 4) AS INTEGER),
-          CAST(substring(TRIM(numero_processo) from 8 for 2) AS INTEGER),
-          CAST(substring(TRIM(numero_processo) from 6 for 2) AS INTEGER)
+          CAST(substring(TRIM(numero_processo) from 8 for 2) AS INTEGER), -- Month
+          CAST(substring(TRIM(numero_processo) from 6 for 2) AS INTEGER)  -- Day
         )
         WHERE data_criacao_docgo IS NULL
         AND TRIM(numero_processo) ~ '^\\d{4}\\.\\d{4}'
         AND CAST(substring(TRIM(numero_processo) from 8 for 2) AS INTEGER) BETWEEN 1 AND 12
         AND CAST(substring(TRIM(numero_processo) from 6 for 2) AS INTEGER) BETWEEN 1 AND 31;
       `);
+
       console.log('Successfully backfilled data_criacao_docgo.');
     } catch (error) {
       console.error('Error backfilling data_criacao_docgo:', error);
