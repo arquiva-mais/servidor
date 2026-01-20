@@ -7,8 +7,26 @@ const OrgaoGerador = require('../models/orgaoGerador.model');
 const Setor = require('../models/setor.model');
 const StatusProcesso = require('../enums/processo.enum.js'); // Assuming usage might be needed, but strictly for the filter logic below
 
+// Função auxiliar para validar ordem de datas
+const validateDateOrder = (dataCriacaoDocGo, dataUltimaTramitacao) => {
+  if (!dataCriacaoDocGo || !dataUltimaTramitacao) return;
+
+  const dCriacao = new Date(dataCriacaoDocGo);
+  const dTramitacao = new Date(dataUltimaTramitacao);
+
+  if (isNaN(dCriacao.getTime()) || isNaN(dTramitacao.getTime())) return;
+
+  // Zerar horário para comparação apenas de datas
+  dCriacao.setHours(0, 0, 0, 0);
+  dTramitacao.setHours(0, 0, 0, 0);
+
+  if (dTramitacao < dCriacao) {
+    throw new Error('A data da última tramitação não pode ser anterior à data de criação (DocGO)');
+  }
+};
+
 async function listarProcessos(filtros, paginacao = {}) {
-  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status } = filtros;
+  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField } = filtros;
   const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
   const where = {
     is_deleted: false
@@ -40,9 +58,10 @@ async function listarProcessos(filtros, paginacao = {}) {
   }
 
   if (data_inicio || data_fim) {
-    where.data_entrada = {};
-    if (data_inicio) where.data_entrada[Op.gte] = data_inicio;
-    if (data_fim) where.data_entrada[Op.lte] = data_fim;
+    const campoData = dateField || 'data_entrada';
+    where[campoData] = {};
+    if (data_inicio) where[campoData][Op.gte] = data_inicio;
+    if (data_fim) where[campoData][Op.lte] = data_fim;
   }
 
   const offset = (page - 1) * limit;
@@ -64,8 +83,16 @@ async function listarProcessos(filtros, paginacao = {}) {
     'valor_total': 'total'
   };
 
-  const orderField = fieldMapping[sortBy] || 'data_entrada';
-  const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  let orderField = fieldMapping[sortBy] || 'data_entrada';
+  let orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+  // Inverter a ordem se for ordenação por 'tempo' (dias no setor)
+  // Mais dias (maior tempo) = Data mais antiga (ASC)
+  // Menos dias (menor tempo) = Data mais recente (DESC)
+  if (sortBy === 'dias_no_setor') {
+    orderField = 'data_entrada'; // Garante que usa data_entrada
+    orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'DESC' : 'ASC';
+  }
 
   const resultado = await Processo.findAndCountAll({
     where,
@@ -112,12 +139,12 @@ async function listarProcessos(filtros, paginacao = {}) {
       return processo;
     }
 
-    let dataRef = processo.data_ultima_movimentacao;
+    // Prioriza data_entrada (chegada no setor) para o cálculo de dias no setor
+    let dataRef = processo.data_entrada;
     
-    // Se não houver movimentação registrada, usa data_entrada (chegada no setor/orgao)
-    // Se não houver data_entrada, usa createdAt como fallback
+    // Fallback: se não houver data_entrada, tenta data_ultima_movimentacao ou createdAt
     if (!dataRef) {
-       dataRef = processo.data_entrada || processo.createdAt;
+       dataRef = processo.data_ultima_movimentacao || processo.createdAt;
     }
 
     if (dataRef) {
@@ -251,6 +278,8 @@ async function criarProcesso(dados, usuarioLogado) {
       setor_id
     };
 
+    validateDateOrder(dadosProcesso.data_criacao_docgo, dadosProcesso.data_ultima_movimentacao);
+
     return await Processo.create(dadosProcesso);
   } catch (error) {
     console.error('Erro detalhado ao criar processo:', error);
@@ -316,9 +345,16 @@ async function atualizarProcesso(id, dados, user_logado) {
       if (setor_id) dadosAtualizacao.setor_id = setor_id;
       dadosAtualizacao.setor_atual = dados.setor_atual;
       
-      // Se o setor mudou, atualiza a data de última movimentação
+      // Se o setor mudou, atualiza a data de movimentação (SLA do setor)
       if (dados.setor_atual !== processo.setor_atual) {
-        dadosAtualizacao.data_ultima_movimentacao = new Date();
+        // Se a data de entrada foi fornecida explicitamente (ex: correção), usa ela. Se não, usa AGORA (chegada no setor).
+        const novaDataEntrada = dadosAtualizacao.data_entrada || new Date();
+        
+        // Garante que a data_entrada seja atualizada para resetar a contagem de dias
+        dadosAtualizacao.data_entrada = novaDataEntrada;
+        
+        // Espelha para data_ultima_movimentacao (legacy/comportamento seguro)
+        dadosAtualizacao.data_ultima_movimentacao = novaDataEntrada;
       }
     }
 
@@ -361,6 +397,10 @@ async function atualizarProcesso(id, dados, user_logado) {
     dadosAtualizacao.data_atualizacao = new Date();
     dadosAtualizacao.update_for = user_logado.nome;
 
+    const dataCriacaoCheck = dadosAtualizacao.hasOwnProperty('data_criacao_docgo') ? dadosAtualizacao.data_criacao_docgo : processo.data_criacao_docgo;
+    const dataUltimaCheck = dadosAtualizacao.hasOwnProperty('data_ultima_movimentacao') ? dadosAtualizacao.data_ultima_movimentacao : processo.data_ultima_movimentacao;
+    validateDateOrder(dataCriacaoCheck, dataUltimaCheck);
+
     return await processo.update(dadosAtualizacao);
   } catch (error) {
     console.error('Erro ao atualizar processo:', error);
@@ -390,6 +430,8 @@ async function atualizarSetor(id, setor_atual, user_logado, data_tramitacao) {
       const dataMovimentacao = data_tramitacao ? new Date(data_tramitacao) : new Date();
       updateData.data_ultima_movimentacao = dataMovimentacao;
       updateData.data_entrada = dataMovimentacao; // Resseta a data de entrada para reiniciar a contagem de dias no novo setor
+
+      validateDateOrder(processo.data_criacao_docgo, dataMovimentacao);
     }
 
     return await processo.update(updateData);
