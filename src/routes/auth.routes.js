@@ -46,6 +46,9 @@ router.post('/registrar', verificarToken, adminOnly, authController.registrar);
 // PUT /auth/usuarios/:id - Atualizar usuário
 router.put('/usuarios/:id', verificarToken, adminOnly, authController.atualizarUsuario);
 
+// PATCH /auth/usuarios/:id/senha - Reset de senha (Admin override)
+router.patch('/usuarios/:id/senha', verificarToken, adminOnly, authController.resetSenhaAdmin);
+
 // DELETE /auth/usuarios/:id - Desativar usuário
 router.delete('/usuarios/:id', verificarToken, adminOnly, authController.desativarUsuario);
 

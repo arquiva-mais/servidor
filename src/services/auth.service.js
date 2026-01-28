@@ -205,5 +205,40 @@ async function atualizarUsuario(usuarioId, dados) {
   };
 }
 
+/**
+ * Reset de senha administrativo (override)
+ * Altera a senha de qualquer usuário sem validar a senha antiga
+ * 
+ * @param {number} usuarioId - ID do usuário
+ * @param {string} novaSenha - Nova senha (será hasheada automaticamente pelo hook do model)
+ * @returns {Object} Mensagem de sucesso
+ */
+async function resetSenhaAdmin(usuarioId, novaSenha) {
+  const bcrypt = require('bcryptjs');
+  
+  const usuario = await Usuario.findByPk(usuarioId);
+  if (!usuario) {
+    throw new Error('Usuário não encontrado');
+  }
 
-module.exports = { registrarUsuario, loginUsuario, listarUsuarios, atualizarUsuario, refreshToken, logout };
+  // Gerar hash da nova senha
+  const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+  // Update direto para evitar o hook beforeUpdate (que faria hash duplo)
+  await Usuario.update(
+    { senha: senhaHash },
+    { where: { id: usuarioId }, individualHooks: false }
+  );
+
+  return {
+    message: `Senha alterada com sucesso para o usuário ${usuario.nome}`,
+    usuario: {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email
+    }
+  };
+}
+
+
+module.exports = { registrarUsuario, loginUsuario, listarUsuarios, atualizarUsuario, refreshToken, logout, resetSenhaAdmin };

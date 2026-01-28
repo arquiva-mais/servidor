@@ -184,6 +184,45 @@ exports.desativarUsuario = async (req, res) => {
   }
 };
 
+/**
+ * Reset de senha administrativo (override)
+ * Requer: ADMIN
+ * Altera a senha de qualquer usuário sem precisar da senha antiga
+ */
+exports.resetSenhaAdmin = async (req, res) => {
+  try {
+    const usuarioId = parseInt(req.params.id);
+    const { password, senha } = req.body;
+    
+    // Aceitar tanto 'password' quanto 'senha'
+    const novaSenha = password || senha;
+
+    // Validação do DTO
+    if (!novaSenha) {
+      return res.status(400).json({ 
+        error: 'Senha é obrigatória',
+        code: 'PASSWORD_REQUIRED'
+      });
+    }
+
+    if (novaSenha.length < 6) {
+      return res.status(400).json({ 
+        error: 'Senha deve ter no mínimo 6 caracteres',
+        code: 'PASSWORD_TOO_SHORT'
+      });
+    }
+
+    const resultado = await authService.resetSenhaAdmin(usuarioId, novaSenha);
+    
+    res.json(resultado);
+  } catch (error) {
+    if (error.message === 'Usuário não encontrado') {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // Adicionar método para verificar token
 exports.verify = async (req, res) => {
   res.json({
