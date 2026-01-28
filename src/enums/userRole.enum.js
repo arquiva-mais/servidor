@@ -67,28 +67,9 @@ const hasMinRole = (userRole, requiredRole) => {
   return userWeight >= requiredWeight;
 };
 
-/**
- * Mapeia roles antigas para novas (migração)
- * @param {string} oldRole - Role antiga
- * @returns {string} - Nova role
- */
-const migrateRole = (oldRole) => {
-  const migration = {
-    'admin': UserRole.ADMIN,
-    'user': UserRole.EDITOR,
-    // Migração dos nomes antigos para novos
-    'operador': UserRole.TRAMITADOR,
-    'tecnico': UserRole.EDITOR,
-    'gestor': UserRole.MODERADOR,
-    'diretor': UserRole.GESTOR
-  };
-  return migration[oldRole] || UserRole.TRAMITADOR;
-};
-
 module.exports = {
   UserRole,
   RoleWeights,
   getRoleWeight,
-  hasMinRole,
-  migrateRole
+  hasMinRole
 };
