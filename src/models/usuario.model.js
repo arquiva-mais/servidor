@@ -1,15 +1,22 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const bcrypt = require('bcryptjs');
+const { UserRole } = require('../enums/userRole.enum');
 
 const Usuario = sequelize.define('Usuario', {
   nome: { type: DataTypes.STRING, allowNull: false },
   email: { type: DataTypes.STRING, allowNull: false, unique: true },
   senha: { type: DataTypes.STRING, allowNull: false },
   role: {
-    type: DataTypes.ENUM('admin', 'user'),
-    defaultValue: 'user',
-    allowNull: false
+    type: DataTypes.ENUM(...UserRole.values()),
+    defaultValue: UserRole.TRAMITADOR,
+    allowNull: false,
+    validate: {
+      isIn: {
+        args: [UserRole.values()],
+        msg: 'Role inválida. Valores permitidos: ' + UserRole.values().join(', ')
+      }
+    }
   },
   orgao_id: {
     type: DataTypes.INTEGER,

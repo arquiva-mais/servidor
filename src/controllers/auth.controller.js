@@ -1,9 +1,42 @@
 const authService = require('../services/auth.service');
+const { UserRole } = require('../enums/userRole.enum');
 
 exports.registrar = async (req, res) => {
   try {
-    const resultado = await authService.registrarUsuario(req.body);
-    res.status(201).json(resultado);
+    const { nome, email, senha, role, orgao_id } = req.body;
+
+    // Validar role se fornecida
+    if (role && !UserRole.isValid(role)) {
+      return res.status(400).json({ 
+        error: 'Role inválida',
+        valid_roles: UserRole.values()
+      });
+    }
+
+    // Admin não pode criar outro Admin diretamente (segurança extra)
+    if (role === UserRole.ADMIN && req.usuario.role !== UserRole.ADMIN) {
+      return res.status(403).json({ 
+        error: 'Apenas administradores podem criar outros administradores' 
+      });
+    }
+
+    const resultado = await authService.registrarUsuario({
+      nome,
+      email,
+      senha,
+      role: role || UserRole.TRAMITADOR, // Default: TRAMITADOR
+      orgao_id: orgao_id || req.usuario.orgao_id
+    });
+
+    res.status(201).json({
+      message: 'Usuário criado com sucesso',
+      usuario: {
+        id: resultado.usuario.id,
+        nome: resultado.usuario.nome,
+        email: resultado.usuario.email,
+        role: resultado.usuario.role
+      }
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -81,7 +114,19 @@ exports.logout = async (req, res) => {
 
 exports.listarUsuarios = async (req, res) => {
   try {
-    const usuarios = await authService.listarUsuarios();
+    const { role, ativo, orgao_id } = req.query;
+
+    // Filtrar por órgão do usuário logado (exceto ADMIN que vê todos)
+    const filtros = {
+      orgao_id: req.usuario.role === UserRole.ADMIN 
+        ? (orgao_id || undefined) 
+        : req.usuario.orgao_id
+    };
+
+    if (role) filtros.role = role;
+    if (ativo !== undefined) filtros.ativo = ativo === 'true';
+
+    const usuarios = await authService.listarUsuarios(filtros);
     res.json(usuarios);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar usuários' });
@@ -91,8 +136,46 @@ exports.listarUsuarios = async (req, res) => {
 exports.atualizarUsuario = async (req, res) => {
   try {
     const usuarioId = parseInt(req.params.id);
+    const { role } = req.body;
+
+    // Validar role se fornecida
+    if (role && !UserRole.isValid(role)) {
+      return res.status(400).json({ 
+        error: 'Role inválida',
+        valid_roles: UserRole.values()
+      });
+    }
+
     const usuarioAtualizado = await authService.atualizarUsuario(usuarioId, req.body);
     res.json(usuarioAtualizado);
+  } catch (error) {
+    if (error.message === 'Usuário não encontrado') {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(400).json({ error: error.message });
+  }
+};
+
+/**
+ * Desativar usuário (soft delete)
+ * Requer: ADMIN
+ */
+exports.desativarUsuario = async (req, res) => {
+  try {
+    const usuarioId = parseInt(req.params.id);
+
+    // Impedir auto-desativação
+    if (usuarioId === req.usuario.id) {
+      return res.status(400).json({ 
+        error: 'Não é possível desativar seu próprio usuário' 
+      });
+    }
+
+    const usuario = await authService.atualizarUsuario(usuarioId, { ativo: false });
+    res.json({ 
+      message: 'Usuário desativado com sucesso',
+      usuario 
+    });
   } catch (error) {
     if (error.message === 'Usuário não encontrado') {
       return res.status(404).json({ error: error.message });
