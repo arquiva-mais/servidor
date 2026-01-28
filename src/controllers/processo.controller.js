@@ -154,3 +154,90 @@ exports.deletar = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+/**
+ * Atribuir responsável a um processo
+ * Requer: GESTOR ou superior
+ * Placeholder para implementação futura
+ */
+exports.atribuirResponsavel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { responsavel_id } = req.body;
+
+    if (!responsavel_id) {
+      return res.status(400).json({ 
+        error: 'ID do responsável é obrigatório',
+        code: 'MISSING_RESPONSAVEL_ID'
+      });
+    }
+
+    const processo = await service.listarProcessoPorId(id);
+
+    if (!processo) {
+      return res.status(404).json({ error: 'Processo não encontrado' });
+    }
+
+    if (processo.orgao_id !== req.usuario.orgao_id) {
+      return res.status(403).json({ error: 'Acesso negado a este processo' });
+    }
+
+    // TODO: Implementar lógica de atribuição
+    // const processoAtualizado = await service.atribuirResponsavel(id, responsavel_id, req.usuario);
+
+    res.status(501).json({ 
+      message: 'Funcionalidade em desenvolvimento',
+      code: 'NOT_IMPLEMENTED',
+      processo_id: id,
+      responsavel_id: responsavel_id
+    });
+  } catch (err) {
+    console.error('Erro ao atribuir responsável:', err);
+    res.status(400).json({ error: err.message });
+  }
+};
+
+/**
+ * Definir prioridade de um processo
+ * Requer: GESTOR ou superior
+ * Placeholder para implementação futura
+ */
+exports.definirPrioridade = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prioridade } = req.body;
+
+    const prioridadesValidas = ['baixa', 'normal', 'alta', 'urgente'];
+    
+    if (!prioridade || !prioridadesValidas.includes(prioridade)) {
+      return res.status(400).json({ 
+        error: 'Prioridade inválida',
+        code: 'INVALID_PRIORITY',
+        valid_values: prioridadesValidas
+      });
+    }
+
+    const processo = await service.listarProcessoPorId(id);
+
+    if (!processo) {
+      return res.status(404).json({ error: 'Processo não encontrado' });
+    }
+
+    if (processo.orgao_id !== req.usuario.orgao_id) {
+      return res.status(403).json({ error: 'Acesso negado a este processo' });
+    }
+
+    // TODO: Implementar lógica de priorização
+    // const processoAtualizado = await service.definirPrioridade(id, prioridade, req.usuario);
+
+    res.status(501).json({ 
+      message: 'Funcionalidade em desenvolvimento',
+      code: 'NOT_IMPLEMENTED',
+      processo_id: id,
+      prioridade: prioridade
+    });
+  } catch (err) {
+    console.error('Erro ao definir prioridade:', err);
+    res.status(400).json({ error: err.message });
+  }
+};

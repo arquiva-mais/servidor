@@ -1,6 +1,7 @@
 const Usuario = require('../models/usuario.model');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../middleware/auth.middleware');
+const { UserRole } = require('../enums/userRole.enum');
 
 async function registrarUsuario(dados) {
   const { nome, email, senha, role, orgao_id } = dados;
@@ -10,11 +11,14 @@ async function registrarUsuario(dados) {
     throw new Error('Email já cadastrado');
   }
 
+  // Validar role
+  const roleValida = role && UserRole.isValid(role) ? role : UserRole.TRAMITADOR;
+
   const usuario = await Usuario.create({
     nome,
     email,
     senha,
-    role: role || 'user',
+    role: roleValida,
     orgao_id
   });
 
@@ -143,9 +147,16 @@ async function logout(userId) {
   );
 }
 
-async function listarUsuarios() {
+async function listarUsuarios(filtros = {}) {
+  const where = {};
+  
+  if (filtros.orgao_id) where.orgao_id = filtros.orgao_id;
+  if (filtros.role) where.role = filtros.role;
+  if (filtros.ativo !== undefined) where.ativo = filtros.ativo;
+
   return Usuario.findAll({
-    attributes: ['id', 'nome', 'email', 'role', 'ativo', 'createdAt'],
+    where,
+    attributes: ['id', 'nome', 'email', 'role', 'orgao_id', 'ativo', 'createdAt'],
     order: [['createdAt', 'DESC']]
   });
 }
@@ -172,7 +183,13 @@ async function atualizarUsuario(usuarioId, dados) {
     }
     camposPermitidos.email = dados.email;
   }
-  if (dados.role) camposPermitidos.role = dados.role;
+  if (dados.role) {
+    // Validar role antes de atualizar
+    if (!UserRole.isValid(dados.role)) {
+      throw new Error('Role inválida. Valores permitidos: ' + UserRole.values().join(', '));
+    }
+    camposPermitidos.role = dados.role;
+  }
   if (dados.orgao_id !== undefined) camposPermitidos.orgao_id = dados.orgao_id;
   if (typeof dados.ativo === 'boolean') camposPermitidos.ativo = dados.ativo;
 
@@ -188,5 +205,40 @@ async function atualizarUsuario(usuarioId, dados) {
   };
 }
 
+/**
+ * Reset de senha administrativo (override)
+ * Altera a senha de qualquer usuário sem validar a senha antiga
+ * 
+ * @param {number} usuarioId - ID do usuário
+ * @param {string} novaSenha - Nova senha (será hasheada automaticamente pelo hook do model)
+ * @returns {Object} Mensagem de sucesso
+ */
+async function resetSenhaAdmin(usuarioId, novaSenha) {
+  const bcrypt = require('bcryptjs');
+  
+  const usuario = await Usuario.findByPk(usuarioId);
+  if (!usuario) {
+    throw new Error('Usuário não encontrado');
+  }
 
-module.exports = { registrarUsuario, loginUsuario, listarUsuarios, atualizarUsuario, refreshToken, logout };
+  // Gerar hash da nova senha
+  const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+  // Update direto para evitar o hook beforeUpdate (que faria hash duplo)
+  await Usuario.update(
+    { senha: senhaHash },
+    { where: { id: usuarioId }, individualHooks: false }
+  );
+
+  return {
+    message: `Senha alterada com sucesso para o usuário ${usuario.nome}`,
+    usuario: {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email
+    }
+  };
+}
+
+
+module.exports = { registrarUsuario, loginUsuario, listarUsuarios, atualizarUsuario, refreshToken, logout, resetSenhaAdmin };
