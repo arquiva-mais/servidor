@@ -5,6 +5,11 @@ exports.listar = async (req, res) => {
     const filtros = req.query;
 
     filtros.orgao_id = req.usuario.orgao_id;
+    
+    // Captura o parâmetro de filtro por prioridade
+    if (req.query.filterPriority) {
+      filtros.filterPriority = req.query.filterPriority;
+    }
 
     const sortBy = req.query.sortBy || 'id';
     const sortOrder = req.query.sortOrder || 'desc';
@@ -198,22 +203,19 @@ exports.atribuirResponsavel = async (req, res) => {
 };
 
 /**
- * Definir prioridade de um processo
+ * Definir prioridade de um processo (toggle boolean)
  * Requer: GESTOR ou superior
- * Placeholder para implementação futura
  */
 exports.definirPrioridade = async (req, res) => {
   try {
     const { id } = req.params;
-    const { prioridade } = req.body;
+    const { isPriority } = req.body;
 
-    const prioridadesValidas = ['baixa', 'normal', 'alta', 'urgente'];
-    
-    if (!prioridade || !prioridadesValidas.includes(prioridade)) {
+    // Validação: isPriority deve ser boolean
+    if (typeof isPriority !== 'boolean') {
       return res.status(400).json({ 
-        error: 'Prioridade inválida',
-        code: 'INVALID_PRIORITY',
-        valid_values: prioridadesValidas
+        error: 'Campo isPriority deve ser um boolean (true ou false)',
+        code: 'INVALID_PRIORITY_TYPE'
       });
     }
 
@@ -227,14 +229,15 @@ exports.definirPrioridade = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado a este processo' });
     }
 
-    // TODO: Implementar lógica de priorização
-    // const processoAtualizado = await service.definirPrioridade(id, prioridade, req.usuario);
+    const processoAtualizado = await service.definirPrioridade(id, isPriority, req.usuario);
 
-    res.status(501).json({ 
-      message: 'Funcionalidade em desenvolvimento',
-      code: 'NOT_IMPLEMENTED',
-      processo_id: id,
-      prioridade: prioridade
+    res.json({ 
+      message: isPriority ? 'Processo marcado como prioritário' : 'Prioridade removida do processo',
+      processo: {
+        id: processoAtualizado.id,
+        numero_processo: processoAtualizado.numero_processo,
+        is_priority: processoAtualizado.is_priority
+      }
     });
   } catch (err) {
     console.error('Erro ao definir prioridade:', err);

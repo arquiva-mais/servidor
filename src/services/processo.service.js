@@ -26,11 +26,16 @@ const validateDateOrder = (dataCriacaoDocGo, dataUltimaTramitacao) => {
 };
 
 async function listarProcessos(filtros, paginacao = {}) {
-  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField } = filtros;
+  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField, filterPriority } = filtros;
   const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
   const where = {
     is_deleted: false
   };
+
+  // Filtro de prioridade: se filterPriority=true, mostra apenas prioritários
+  if (filterPriority === 'true' || filterPriority === true) {
+    where.is_priority = true;
+  }
 
   if (busca) {
     where[Op.or] = [
@@ -94,6 +99,12 @@ async function listarProcessos(filtros, paginacao = {}) {
     orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'DESC' : 'ASC';
   }
 
+  // Ordenação composta: is_priority DESC (prioritários primeiro), depois EXISTING_SORT
+  const orderClause = [
+    ['is_priority', 'DESC'],  // Prioritários sempre no topo
+    [orderField, orderDirection]  // Ordenação secundária (EXISTING_SORT)
+  ];
+
   const resultado = await Processo.findAndCountAll({
     where,
     include: [
@@ -123,7 +134,7 @@ async function listarProcessos(filtros, paginacao = {}) {
         attributes: ['id', 'nome']
       }
     ],
-    order: [[orderField, orderDirection]],
+    order: orderClause,
     limit: parseInt(limit),
     offset: parseInt(offset)
   });
@@ -455,4 +466,38 @@ async function deletarProcesso(id) {
   return { message: 'Processo deletado com sucesso' };
 }
 
-module.exports = { listarProcessos, listarProcessoPorId, criarProcesso, atualizarProcesso, atualizarSetor, deletarProcesso, listarTodosProcessosPorOrgao };
+/**
+ * Define a prioridade de um processo
+ * @param {number} id - ID do processo
+ * @param {boolean} isPriority - true = prioritário, false = normal
+ * @param {object} user_logado - Usuário que está fazendo a alteração
+ * @returns {Promise<object>} - Processo atualizado
+ */
+async function definirPrioridade(id, isPriority, user_logado) {
+  try {
+    const processo = await Processo.findByPk(id);
+    if (!processo) throw new Error('Processo não encontrado');
+
+    const updateData = {
+      is_priority: isPriority,
+      data_atualizacao: new Date(),
+      update_for: user_logado.nome
+    };
+
+    return await processo.update(updateData);
+  } catch (error) {
+    console.error('Erro ao definir prioridade:', error);
+    throw error;
+  }
+}
+
+module.exports = { 
+  listarProcessos, 
+  listarProcessoPorId, 
+  criarProcesso, 
+  atualizarProcesso, 
+  atualizarSetor, 
+  deletarProcesso, 
+  definirPrioridade,
+  listarTodosProcessosPorOrgao 
+};
