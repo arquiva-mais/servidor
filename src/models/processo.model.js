@@ -28,6 +28,7 @@ const Processo = sequelize.define('Processo', {
   data_atualizacao: DataTypes.DATE,
   data_ultima_movimentacao: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   is_deleted: { type: DataTypes.BOOLEAN, defaultValue: false },
+  is_priority: { type: DataTypes.BOOLEAN, defaultValue: false },
   orgao_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
