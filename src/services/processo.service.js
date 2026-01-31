@@ -102,7 +102,8 @@ async function listarProcessos(filtros, paginacao = {}) {
   // Ordenação composta: is_priority DESC (prioritários primeiro), depois EXISTING_SORT
   const orderClause = [
     ['is_priority', 'DESC'],  // Prioritários sempre no topo
-    [orderField, orderDirection]  // Ordenação secundária (EXISTING_SORT)
+    [orderField, orderDirection],  // Ordenação principal
+    ['id', 'ASC']  // Desempate por ID para estabilidade na paginação
   ];
 
   const resultado = await Processo.findAndCountAll({
