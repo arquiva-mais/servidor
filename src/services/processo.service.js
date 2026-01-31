@@ -82,7 +82,7 @@ async function listarProcessos(filtros, paginacao = {}) {
     'status': 'status',
     'data_entrada': 'data_entrada',
     'competencia': 'competencia',
-    'valor_convenio': 'valor_convenio',
+    'outros_valores': 'outros_valores',
     'valor_recurso_proprio': 'valor_recurso_proprio',
     'valor_royalties': 'valor_royalties',
     'valor_total': 'total'
@@ -195,7 +195,7 @@ async function listarTodosProcessosPorOrgao(orgao_id) {
     }
 
     const processos = await Processo.findAll({
-      attributes: ['status', 'valor_convenio', 'valor_recurso_proprio', 'valor_royalties', 'total'],
+      attributes: ['status', 'outros_valores', 'valor_recurso_proprio', 'valor_royalties', 'total'],
       where: {
         orgao_id: orgao_id,
         is_deleted: false
@@ -260,12 +260,12 @@ async function criarProcesso(dados, usuarioLogado) {
     });
     if (existe) throw new Error('Já existe um processo com esse número neste órgão');
 
-    const valores = ['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
+    const valores = ['outros_valores', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
       acc[key] = parseFloat(dados[key]) || 0;
       return acc;
     }, {});
 
-    const total = valores.valor_convenio + valores.valor_recurso_proprio + valores.valor_royalties;
+    const total = valores.outros_valores + valores.valor_recurso_proprio + valores.valor_royalties;
 
     // Processar campos de domínio usando connectOrCreate
     const objeto_id = await domainService.connectOrCreate(Objeto, dados.objeto);
@@ -371,7 +371,7 @@ async function atualizarProcesso(id, dados, user_logado) {
 
     // Copia todos os campos de dados, exceto os valores financeiros e campos de domínio
     Object.keys(dados).forEach(key => {
-      if (!['valor_convenio', 'valor_recurso_proprio', 'valor_royalties', 'objeto', 'credor', 'orgao_gerador', 'setor_atual'].includes(key)) {
+      if (!['outros_valores', 'valor_recurso_proprio', 'valor_royalties', 'objeto', 'credor', 'orgao_gerador', 'setor_atual'].includes(key)) {
         dadosAtualizacao[key] = dados[key];
       }
     });
@@ -379,12 +379,12 @@ async function atualizarProcesso(id, dados, user_logado) {
     // Processa valores financeiros apenas se foram enviados
     let hasValueUpdate = false;
 
-    const hasValorConvenio = dados.valor_convenio !== undefined && dados.valor_convenio !== null && dados.valor_convenio !== '';
+    const hasOutrosValores = dados.outros_valores !== undefined && dados.outros_valores !== null && dados.outros_valores !== '';
     const hasValorRecursoProprio = dados.valor_recurso_proprio !== undefined && dados.valor_recurso_proprio !== null && dados.valor_recurso_proprio !== '';
     const hasValorRoyalties = dados.valor_royalties !== undefined && dados.valor_royalties !== null && dados.valor_royalties !== '';
 
-    if (hasValorConvenio) {
-      dadosAtualizacao.valor_convenio = parseFloat(dados.valor_convenio) || 0;
+    if (hasOutrosValores) {
+      dadosAtualizacao.outros_valores = parseFloat(dados.outros_valores) || 0;
       hasValueUpdate = true;
     }
     if (hasValorRecursoProprio) {
@@ -398,10 +398,10 @@ async function atualizarProcesso(id, dados, user_logado) {
 
     // Recalcula o total apenas se houver atualização de valores
     if (hasValueUpdate) {
-      const vConvenio = dadosAtualizacao.valor_convenio !== undefined ? dadosAtualizacao.valor_convenio : processo.valor_convenio;
+      const vOutrosValores = dadosAtualizacao.outros_valores !== undefined ? dadosAtualizacao.outros_valores : processo.outros_valores;
       const vRecurso = dadosAtualizacao.valor_recurso_proprio !== undefined ? dadosAtualizacao.valor_recurso_proprio : processo.valor_recurso_proprio;
       const vRoyalties = dadosAtualizacao.valor_royalties !== undefined ? dadosAtualizacao.valor_royalties : processo.valor_royalties;
-      dadosAtualizacao.total = vConvenio + vRecurso + vRoyalties;
+      dadosAtualizacao.total = vOutrosValores + vRecurso + vRoyalties;
     }
 
     // Adiciona metadados de atualização
