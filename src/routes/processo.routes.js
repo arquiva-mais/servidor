@@ -48,7 +48,10 @@ router.put('/:id', minRole(UserRole.EDITOR), controllerProcessos.atualizar);
 // DELETE /processos/:id - Soft delete (arquivar)
 router.delete('/:id', minRole(UserRole.MODERADOR), controllerProcessos.deletar);
 
-// PATCH /processos/:id/atribuir - Atribuir responsável (placeholder)
+// GET /processos/usuarios-atribuicao - Lista usuários para atribuição
+router.get('/usuarios-atribuicao', minRole(UserRole.MODERADOR), controllerProcessos.listarUsuariosParaAtribuicao);
+
+// PATCH /processos/:id/atribuir - Atribuir responsável
 router.patch('/:id/atribuir', minRole(UserRole.MODERADOR), controllerProcessos.atribuirResponsavel);
 
 // ============================================================

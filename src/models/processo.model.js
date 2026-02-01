@@ -16,7 +16,10 @@ const Processo = sequelize.define('Processo', {
   update_for: { type: DataTypes.STRING, allowNull: true },
   descricao: DataTypes.TEXT,
   observacao: DataTypes.TEXT,
-  valor_convenio: { type: DataTypes.FLOAT, defaultValue: 0 },
+  outros_valores: { 
+    type: DataTypes.FLOAT, 
+    defaultValue: 0 
+  },
   valor_recurso_proprio: { type: DataTypes.FLOAT, defaultValue: 0 },
   valor_royalties: { type: DataTypes.FLOAT, defaultValue: 0 },
   total: { type: DataTypes.FLOAT, defaultValue: 0 },
@@ -68,6 +71,26 @@ const Processo = sequelize.define('Processo', {
       model: 'setores',
       key: 'id'
     }
+  },
+  atribuido_para_usuario_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
+  atribuido_por_usuario_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
+  data_atribuicao: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'processos',

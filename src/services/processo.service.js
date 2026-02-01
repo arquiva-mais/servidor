@@ -1,6 +1,7 @@
 const Processo = require('../models/processo.model');
 const { Op } = require('sequelize');
 const domainService = require('./domain.service');
+const notificacaoService = require('./notificacao.service');
 const Objeto = require('../models/objeto.model');
 const Credor = require('../models/credor.model');
 const OrgaoGerador = require('../models/orgaoGerador.model');
@@ -26,7 +27,7 @@ const validateDateOrder = (dataCriacaoDocGo, dataUltimaTramitacao) => {
 };
 
 async function listarProcessos(filtros, paginacao = {}) {
-  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField, filterPriority } = filtros;
+  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField, filterPriority, meusProcessos, usuarioId } = filtros;
   const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
   const where = {
     is_deleted: false
@@ -35,6 +36,11 @@ async function listarProcessos(filtros, paginacao = {}) {
   // Filtro de prioridade: se filterPriority=true, mostra apenas prioritários
   if (filterPriority === 'true' || filterPriority === true) {
     where.is_priority = true;
+  }
+
+  // Filtro "Meus Processos": mostra apenas processos atribuídos ao usuário logado
+  if ((meusProcessos === 'true' || meusProcessos === true) && usuarioId) {
+    where.atribuido_para_usuario_id = usuarioId;
   }
 
   if (busca) {
@@ -82,7 +88,7 @@ async function listarProcessos(filtros, paginacao = {}) {
     'status': 'status',
     'data_entrada': 'data_entrada',
     'competencia': 'competencia',
-    'valor_convenio': 'valor_convenio',
+    'outros_valores': 'outros_valores',
     'valor_recurso_proprio': 'valor_recurso_proprio',
     'valor_royalties': 'valor_royalties',
     'valor_total': 'total'
@@ -102,7 +108,8 @@ async function listarProcessos(filtros, paginacao = {}) {
   // Ordenação composta: is_priority DESC (prioritários primeiro), depois EXISTING_SORT
   const orderClause = [
     ['is_priority', 'DESC'],  // Prioritários sempre no topo
-    [orderField, orderDirection]  // Ordenação secundária (EXISTING_SORT)
+    [orderField, orderDirection],  // Ordenação principal
+    ['id', 'ASC']  // Desempate por ID para estabilidade na paginação
   ];
 
   const resultado = await Processo.findAndCountAll({
@@ -132,6 +139,16 @@ async function listarProcessos(filtros, paginacao = {}) {
         model: Setor,
         as: 'setorLookup',
         attributes: ['id', 'nome']
+      },
+      {
+        model: require('../models/usuario.model'),
+        as: 'atribuidoPara',
+        attributes: ['id', 'nome', 'email', 'role']
+      },
+      {
+        model: require('../models/usuario.model'),
+        as: 'atribuidoPor',
+        attributes: ['id', 'nome', 'email', 'role']
       }
     ],
     order: orderClause,
@@ -195,7 +212,7 @@ async function listarTodosProcessosPorOrgao(orgao_id) {
     }
 
     const processos = await Processo.findAll({
-      attributes: ['status', 'valor_convenio', 'valor_recurso_proprio', 'valor_royalties', 'total'],
+      attributes: ['status', 'outros_valores', 'valor_recurso_proprio', 'valor_royalties', 'total'],
       where: {
         orgao_id: orgao_id,
         is_deleted: false
@@ -260,12 +277,12 @@ async function criarProcesso(dados, usuarioLogado) {
     });
     if (existe) throw new Error('Já existe um processo com esse número neste órgão');
 
-    const valores = ['valor_convenio', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
+    const valores = ['outros_valores', 'valor_recurso_proprio', 'valor_royalties'].reduce((acc, key) => {
       acc[key] = parseFloat(dados[key]) || 0;
       return acc;
     }, {});
 
-    const total = valores.valor_convenio + valores.valor_recurso_proprio + valores.valor_royalties;
+    const total = valores.outros_valores + valores.valor_recurso_proprio + valores.valor_royalties;
 
     // Processar campos de domínio usando connectOrCreate
     const objeto_id = await domainService.connectOrCreate(Objeto, dados.objeto);
@@ -371,7 +388,7 @@ async function atualizarProcesso(id, dados, user_logado) {
 
     // Copia todos os campos de dados, exceto os valores financeiros e campos de domínio
     Object.keys(dados).forEach(key => {
-      if (!['valor_convenio', 'valor_recurso_proprio', 'valor_royalties', 'objeto', 'credor', 'orgao_gerador', 'setor_atual'].includes(key)) {
+      if (!['outros_valores', 'valor_recurso_proprio', 'valor_royalties', 'objeto', 'credor', 'orgao_gerador', 'setor_atual'].includes(key)) {
         dadosAtualizacao[key] = dados[key];
       }
     });
@@ -379,12 +396,12 @@ async function atualizarProcesso(id, dados, user_logado) {
     // Processa valores financeiros apenas se foram enviados
     let hasValueUpdate = false;
 
-    const hasValorConvenio = dados.valor_convenio !== undefined && dados.valor_convenio !== null && dados.valor_convenio !== '';
+    const hasOutrosValores = dados.outros_valores !== undefined && dados.outros_valores !== null && dados.outros_valores !== '';
     const hasValorRecursoProprio = dados.valor_recurso_proprio !== undefined && dados.valor_recurso_proprio !== null && dados.valor_recurso_proprio !== '';
     const hasValorRoyalties = dados.valor_royalties !== undefined && dados.valor_royalties !== null && dados.valor_royalties !== '';
 
-    if (hasValorConvenio) {
-      dadosAtualizacao.valor_convenio = parseFloat(dados.valor_convenio) || 0;
+    if (hasOutrosValores) {
+      dadosAtualizacao.outros_valores = parseFloat(dados.outros_valores) || 0;
       hasValueUpdate = true;
     }
     if (hasValorRecursoProprio) {
@@ -398,10 +415,10 @@ async function atualizarProcesso(id, dados, user_logado) {
 
     // Recalcula o total apenas se houver atualização de valores
     if (hasValueUpdate) {
-      const vConvenio = dadosAtualizacao.valor_convenio !== undefined ? dadosAtualizacao.valor_convenio : processo.valor_convenio;
+      const vOutrosValores = dadosAtualizacao.outros_valores !== undefined ? dadosAtualizacao.outros_valores : processo.outros_valores;
       const vRecurso = dadosAtualizacao.valor_recurso_proprio !== undefined ? dadosAtualizacao.valor_recurso_proprio : processo.valor_recurso_proprio;
       const vRoyalties = dadosAtualizacao.valor_royalties !== undefined ? dadosAtualizacao.valor_royalties : processo.valor_royalties;
-      dadosAtualizacao.total = vConvenio + vRecurso + vRoyalties;
+      dadosAtualizacao.total = vOutrosValores + vRecurso + vRoyalties;
     }
 
     // Adiciona metadados de atualização
@@ -441,6 +458,12 @@ async function atualizarSetor(id, setor_atual, user_logado, data_tramitacao) {
       const dataMovimentacao = data_tramitacao ? new Date(data_tramitacao) : new Date();
       updateData.data_ultima_movimentacao = dataMovimentacao;
       updateData.data_entrada = dataMovimentacao; // Resseta a data de entrada para reiniciar a contagem de dias no novo setor
+
+      // REGRA: Ao tramitar, limpa a atribuição de responsável
+      // O processo chega "sem dono" no novo setor
+      updateData.atribuido_para_usuario_id = null;
+      updateData.atribuido_por_usuario_id = null;
+      updateData.data_atribuicao = null;
 
       validateDateOrder(processo.data_criacao_docgo, dataMovimentacao);
     }
@@ -491,6 +514,79 @@ async function definirPrioridade(id, isPriority, user_logado) {
   }
 }
 
+/**
+ * Atribui um responsável a um processo
+ * @param {number} processoId - ID do processo
+ * @param {number|null} usuarioId - ID do usuário a atribuir (null para remover atribuição)
+ * @param {object} user_logado - Usuário que está fazendo a alteração
+ * @returns {Promise<object>} - Processo atualizado
+ */
+async function atribuirResponsavel(processoId, usuarioId, user_logado) {
+  try {
+    const processo = await Processo.findByPk(processoId);
+    if (!processo) throw new Error('Processo não encontrado');
+
+    // Se usuarioId for fornecido, verifica se o usuário existe e pertence ao mesmo órgão
+    if (usuarioId !== null) {
+      const Usuario = require('../models/usuario.model');
+      const usuario = await Usuario.findByPk(usuarioId);
+      
+      if (!usuario) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      if (usuario.orgao_id !== processo.orgao_id) {
+        throw new Error('O usuário deve pertencer ao mesmo órgão do processo');
+      }
+
+      // Criar notificação para o usuário que recebeu a atribuição
+      // Apenas se for uma atribuição (não uma remoção) e não for auto-atribuição
+      if (usuarioId !== user_logado.id) {
+        const mensagem = `${user_logado.nome} atribuiu o processo ${processo.numero_processo} a você. Verifique em 'Meus Processos'.`;
+        await notificacaoService.criarNotificacao(usuarioId, mensagem);
+      }
+    }
+
+    const updateData = {
+      atribuido_para_usuario_id: usuarioId,
+      atribuido_por_usuario_id: usuarioId ? user_logado.id : null, // Se está atribuindo, salva quem atribuiu; se está removendo, limpa
+      data_atribuicao: usuarioId ? new Date() : null, // Data/hora da atribuição
+      data_atualizacao: new Date(),
+      update_for: user_logado.nome
+    };
+
+    return await processo.update(updateData);
+  } catch (error) {
+    console.error('Erro ao atribuir responsável:', error);
+    throw error;
+  }
+}
+
+/**
+ * Lista usuários de um órgão específico (para seleção de atribuição)
+ * @param {number} orgaoId - ID do órgão
+ * @returns {Promise<Array>} - Lista de usuários
+ */
+async function listarUsuariosPorOrgao(orgaoId) {
+  try {
+    const Usuario = require('../models/usuario.model');
+    
+    const usuarios = await Usuario.findAll({
+      where: {
+        orgao_id: orgaoId,
+        ativo: true
+      },
+      attributes: ['id', 'nome', 'email', 'role'],
+      order: [['nome', 'ASC']]
+    });
+
+    return usuarios;
+  } catch (error) {
+    console.error('Erro ao listar usuários por órgão:', error);
+    throw error;
+  }
+}
+
 module.exports = { 
   listarProcessos, 
   listarProcessoPorId, 
@@ -499,5 +595,8 @@ module.exports = {
   atualizarSetor, 
   deletarProcesso, 
   definirPrioridade,
-  listarTodosProcessosPorOrgao 
+  listarTodosProcessosPorOrgao,
+  atribuirResponsavel,
+  listarUsuariosPorOrgao
 };
+
