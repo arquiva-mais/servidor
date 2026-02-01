@@ -1,15 +1,42 @@
 const rateLimit = require('express-rate-limit');
 
 /**
- * Extrai o IP real do request considerando proxies (Nginx, etc.)
+ * Extrai o IP real do request considerando a cadeia de proxies:
+ * Cloudflare -> Nginx -> Node.js (Express)
+ * 
+ * Hierarquia de prioridade:
+ * 1. cf-connecting-ip: IP real garantido pela Cloudflare (mais confiável)
+ * 2. x-forwarded-for: Primeiro IP da lista (fallback se Cloudflare não estiver presente)
+ * 3. req.ip: IP processado pelo Express (trust proxy deve estar configurado)
+ * 4. req.socket.remoteAddress: Fallback final (conexão direta)
+ * 
  * @param {Request} req 
  * @returns {string}
  */
 const getClientIp = (req) => {
-  return req.ip || 
-         req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-         req.socket?.remoteAddress || 
-         'unknown';
+  // 1. Cloudflare: Header mais confiável quando usando Cloudflare
+  const cfConnectingIp = req.headers['cf-connecting-ip'];
+  if (cfConnectingIp) {
+    return cfConnectingIp.trim();
+  }
+
+  // 2. X-Forwarded-For: Primeiro IP da lista (IP original do cliente)
+  // Formato: "client, proxy1, proxy2" - pegamos o primeiro
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (xForwardedFor) {
+    const firstIp = xForwardedFor.split(',')[0]?.trim();
+    if (firstIp) {
+      return firstIp;
+    }
+  }
+
+  // 3. req.ip: IP processado pelo Express (funciona com trust proxy configurado)
+  if (req.ip) {
+    return req.ip;
+  }
+
+  // 4. Fallback final: conexão direta do socket
+  return req.socket?.remoteAddress || 'unknown';
 };
 
 /**
