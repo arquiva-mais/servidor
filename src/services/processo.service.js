@@ -1,6 +1,7 @@
 const Processo = require('../models/processo.model');
 const { Op } = require('sequelize');
 const domainService = require('./domain.service');
+const notificacaoService = require('./notificacao.service');
 const Objeto = require('../models/objeto.model');
 const Credor = require('../models/credor.model');
 const OrgaoGerador = require('../models/orgaoGerador.model');
@@ -536,6 +537,13 @@ async function atribuirResponsavel(processoId, usuarioId, user_logado) {
       
       if (usuario.orgao_id !== processo.orgao_id) {
         throw new Error('O usuário deve pertencer ao mesmo órgão do processo');
+      }
+
+      // Criar notificação para o usuário que recebeu a atribuição
+      // Apenas se for uma atribuição (não uma remoção) e não for auto-atribuição
+      if (usuarioId !== user_logado.id) {
+        const mensagem = `${user_logado.nome} atribuiu o processo ${processo.numero_processo} a você. Verifique em 'Meus Processos'.`;
+        await notificacaoService.criarNotificacao(usuarioId, mensagem);
       }
     }
 

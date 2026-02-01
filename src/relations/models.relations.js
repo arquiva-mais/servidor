@@ -5,6 +5,7 @@ const Objeto = require('../models/objeto.model');
 const Credor = require('../models/credor.model');
 const OrgaoGerador = require('../models/orgaoGerador.model');
 const Setor = require('../models/setor.model');
+const Notificacao = require('../models/notificacao.model');
 
 // Definir associações
 Orgao.hasMany(Usuario, { foreignKey: 'orgao_id', as: 'usuarios' });
@@ -34,4 +35,8 @@ Processo.belongsTo(Usuario, { foreignKey: 'atribuido_para_usuario_id', as: 'atri
 Usuario.hasMany(Processo, { foreignKey: 'atribuido_por_usuario_id', as: 'processosQueAtribuiu' });
 Processo.belongsTo(Usuario, { foreignKey: 'atribuido_por_usuario_id', as: 'atribuidoPor' });
 
-module.exports = { Usuario, Processo, Orgao, Objeto, Credor, OrgaoGerador, Setor };
+// Relação de notificações
+Usuario.hasMany(Notificacao, { foreignKey: 'usuario_id', as: 'notificacoes' });
+Notificacao.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' });
+
+module.exports = { Usuario, Processo, Orgao, Objeto, Credor, OrgaoGerador, Setor, Notificacao };

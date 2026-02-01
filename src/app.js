@@ -7,6 +7,8 @@ const processosRoutes = require('./routes/processo.routes');
 const authRoutes = require('./routes/auth.routes')
 const orgaoRoutes = require('./routes/orgao.routes')
 const domainRoutes = require('./routes/domain.routes')
+const notificacaoRoutes = require('./routes/notificacao.routes')
+const { iniciarJobs } = require('./jobs/cleanup.jobs')
 
 // Importar controllers de lookup tables
 const domainController = require('./controllers/domain.controller')
@@ -49,6 +51,7 @@ app.use('/processos', processosRoutes);
 app.use('/auth', authRoutes)
 app.use('/orgao', orgaoRoutes)
 app.use('/domain', domainRoutes)
+app.use('/notificacoes', notificacaoRoutes)
 
 // Rotas de lookup tables em português
 app.get('/objetos', verificarToken, domainController.listObjects);
@@ -92,5 +95,9 @@ const PORT = process.env.PORT || 3001;
 
 sequelize.authenticate().then(() => {
   console.log('Banco sincronizado');
+  
+  // Iniciar jobs de manutenção
+  iniciarJobs();
+  
   app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
 });
