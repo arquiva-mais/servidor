@@ -26,7 +26,7 @@ const validateDateOrder = (dataCriacaoDocGo, dataUltimaTramitacao) => {
 };
 
 async function listarProcessos(filtros, paginacao = {}) {
-  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField, filterPriority } = filtros;
+  const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField, filterPriority, meusProcessos, usuarioId } = filtros;
   const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
   const where = {
     is_deleted: false
@@ -35,6 +35,11 @@ async function listarProcessos(filtros, paginacao = {}) {
   // Filtro de prioridade: se filterPriority=true, mostra apenas prioritários
   if (filterPriority === 'true' || filterPriority === true) {
     where.is_priority = true;
+  }
+
+  // Filtro "Meus Processos": mostra apenas processos atribuídos ao usuário logado
+  if ((meusProcessos === 'true' || meusProcessos === true) && usuarioId) {
+    where.atribuido_para_usuario_id = usuarioId;
   }
 
   if (busca) {
@@ -133,6 +138,16 @@ async function listarProcessos(filtros, paginacao = {}) {
         model: Setor,
         as: 'setorLookup',
         attributes: ['id', 'nome']
+      },
+      {
+        model: require('../models/usuario.model'),
+        as: 'atribuidoPara',
+        attributes: ['id', 'nome', 'email', 'role']
+      },
+      {
+        model: require('../models/usuario.model'),
+        as: 'atribuidoPor',
+        attributes: ['id', 'nome', 'email', 'role']
       }
     ],
     order: orderClause,
@@ -443,6 +458,12 @@ async function atualizarSetor(id, setor_atual, user_logado, data_tramitacao) {
       updateData.data_ultima_movimentacao = dataMovimentacao;
       updateData.data_entrada = dataMovimentacao; // Resseta a data de entrada para reiniciar a contagem de dias no novo setor
 
+      // REGRA: Ao tramitar, limpa a atribuição de responsável
+      // O processo chega "sem dono" no novo setor
+      updateData.atribuido_para_usuario_id = null;
+      updateData.atribuido_por_usuario_id = null;
+      updateData.data_atribuicao = null;
+
       validateDateOrder(processo.data_criacao_docgo, dataMovimentacao);
     }
 
@@ -492,6 +513,72 @@ async function definirPrioridade(id, isPriority, user_logado) {
   }
 }
 
+/**
+ * Atribui um responsável a um processo
+ * @param {number} processoId - ID do processo
+ * @param {number|null} usuarioId - ID do usuário a atribuir (null para remover atribuição)
+ * @param {object} user_logado - Usuário que está fazendo a alteração
+ * @returns {Promise<object>} - Processo atualizado
+ */
+async function atribuirResponsavel(processoId, usuarioId, user_logado) {
+  try {
+    const processo = await Processo.findByPk(processoId);
+    if (!processo) throw new Error('Processo não encontrado');
+
+    // Se usuarioId for fornecido, verifica se o usuário existe e pertence ao mesmo órgão
+    if (usuarioId !== null) {
+      const Usuario = require('../models/usuario.model');
+      const usuario = await Usuario.findByPk(usuarioId);
+      
+      if (!usuario) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      if (usuario.orgao_id !== processo.orgao_id) {
+        throw new Error('O usuário deve pertencer ao mesmo órgão do processo');
+      }
+    }
+
+    const updateData = {
+      atribuido_para_usuario_id: usuarioId,
+      atribuido_por_usuario_id: usuarioId ? user_logado.id : null, // Se está atribuindo, salva quem atribuiu; se está removendo, limpa
+      data_atribuicao: usuarioId ? new Date() : null, // Data/hora da atribuição
+      data_atualizacao: new Date(),
+      update_for: user_logado.nome
+    };
+
+    return await processo.update(updateData);
+  } catch (error) {
+    console.error('Erro ao atribuir responsável:', error);
+    throw error;
+  }
+}
+
+/**
+ * Lista usuários de um órgão específico (para seleção de atribuição)
+ * @param {number} orgaoId - ID do órgão
+ * @returns {Promise<Array>} - Lista de usuários
+ */
+async function listarUsuariosPorOrgao(orgaoId) {
+  try {
+    const Usuario = require('../models/usuario.model');
+    
+    const usuarios = await Usuario.findAll({
+      where: {
+        orgao_id: orgaoId,
+        ativo: true
+      },
+      attributes: ['id', 'nome', 'email', 'role'],
+      order: [['nome', 'ASC']]
+    });
+
+    return usuarios;
+  } catch (error) {
+    console.error('Erro ao listar usuários por órgão:', error);
+    throw error;
+  }
+}
+
 module.exports = { 
   listarProcessos, 
   listarProcessoPorId, 
@@ -500,5 +587,8 @@ module.exports = {
   atualizarSetor, 
   deletarProcesso, 
   definirPrioridade,
-  listarTodosProcessosPorOrgao 
+  listarTodosProcessosPorOrgao,
+  atribuirResponsavel,
+  listarUsuariosPorOrgao
 };
+

@@ -11,6 +11,12 @@ exports.listar = async (req, res) => {
       filtros.filterPriority = req.query.filterPriority;
     }
 
+    // Captura o parâmetro de filtro "Meus Processos"
+    if (req.query.meusProcessos) {
+      filtros.meusProcessos = req.query.meusProcessos;
+      filtros.usuarioId = req.usuario.id; // Passa o ID do usuário logado
+    }
+
     const sortBy = req.query.sortBy || 'id';
     const sortOrder = req.query.sortOrder || 'desc';
 
@@ -162,18 +168,18 @@ exports.deletar = async (req, res) => {
 
 /**
  * Atribuir responsável a um processo
- * Requer: GESTOR ou superior
- * Placeholder para implementação futura
+ * Requer: MODERADOR ou superior
  */
 exports.atribuirResponsavel = async (req, res) => {
   try {
     const { id } = req.params;
-    const { responsavel_id } = req.body;
+    const { usuarioId } = req.body;
 
-    if (!responsavel_id) {
+    // usuarioId pode ser null para remover atribuição
+    if (usuarioId === undefined) {
       return res.status(400).json({ 
-        error: 'ID do responsável é obrigatório',
-        code: 'MISSING_RESPONSAVEL_ID'
+        error: 'Campo usuarioId é obrigatório (use null para remover atribuição)',
+        code: 'MISSING_USUARIO_ID'
       });
     }
 
@@ -187,14 +193,15 @@ exports.atribuirResponsavel = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado a este processo' });
     }
 
-    // TODO: Implementar lógica de atribuição
-    // const processoAtualizado = await service.atribuirResponsavel(id, responsavel_id, req.usuario);
+    const processoAtualizado = await service.atribuirResponsavel(id, usuarioId, req.usuario);
 
-    res.status(501).json({ 
-      message: 'Funcionalidade em desenvolvimento',
-      code: 'NOT_IMPLEMENTED',
-      processo_id: id,
-      responsavel_id: responsavel_id
+    res.json({ 
+      message: usuarioId ? 'Responsável atribuído com sucesso' : 'Atribuição removida com sucesso',
+      processo: {
+        id: processoAtualizado.id,
+        numero_processo: processoAtualizado.numero_processo,
+        atribuido_para_usuario_id: processoAtualizado.atribuido_para_usuario_id
+      }
     });
   } catch (err) {
     console.error('Erro ao atribuir responsável:', err);
@@ -242,5 +249,21 @@ exports.definirPrioridade = async (req, res) => {
   } catch (err) {
     console.error('Erro ao definir prioridade:', err);
     res.status(400).json({ error: err.message });
+  }
+};
+
+/**
+ * Lista usuários do mesmo órgão para atribuição
+ * Requer: MODERADOR ou superior
+ */
+exports.listarUsuariosParaAtribuicao = async (req, res) => {
+  try {
+    const orgaoId = req.usuario.orgao_id;
+    const usuarios = await service.listarUsuariosPorOrgao(orgaoId);
+
+    res.json(usuarios);
+  } catch (err) {
+    console.error('Erro ao listar usuários:', err);
+    res.status(500).json({ error: 'Erro ao listar usuários' });
   }
 };

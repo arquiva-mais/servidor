@@ -71,6 +71,26 @@ const Processo = sequelize.define('Processo', {
       model: 'setores',
       key: 'id'
     }
+  },
+  atribuido_para_usuario_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
+  atribuido_por_usuario_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
+  data_atribuicao: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'processos',

@@ -26,4 +26,12 @@ Processo.belongsTo(OrgaoGerador, { foreignKey: 'orgao_gerador_id', as: 'orgaoGer
 Setor.hasMany(Processo, { foreignKey: 'setor_id', as: 'processos' });
 Processo.belongsTo(Setor, { foreignKey: 'setor_id', as: 'setorLookup' });
 
+// Relação de atribuição de responsável
+Usuario.hasMany(Processo, { foreignKey: 'atribuido_para_usuario_id', as: 'processosAtribuidos' });
+Processo.belongsTo(Usuario, { foreignKey: 'atribuido_para_usuario_id', as: 'atribuidoPara' });
+
+// Relação de quem fez a atribuição (atribuidor)
+Usuario.hasMany(Processo, { foreignKey: 'atribuido_por_usuario_id', as: 'processosQueAtribuiu' });
+Processo.belongsTo(Usuario, { foreignKey: 'atribuido_por_usuario_id', as: 'atribuidoPor' });
+
 module.exports = { Usuario, Processo, Orgao, Objeto, Credor, OrgaoGerador, Setor };
