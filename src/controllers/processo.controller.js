@@ -22,7 +22,7 @@ exports.listar = async (req, res) => {
 
     const paginacao = {
       page: req.query.page || 1,
-      limit: req.query.limit || 10,
+      limit: req.query.limit || 20,
       sortBy,
       sortOrder
     };
@@ -60,6 +60,17 @@ exports.listarTodosPorOrgao = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao listar processos' });
+  }
+};
+
+exports.listarValoresDistintos = async (req, res) => {
+  try {
+    const orgao_id = req.usuario.orgao_id;
+    const resultado = await service.listarValoresDistintos(orgao_id);
+    res.json(resultado);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao listar valores de filtros' });
   }
 };
 

@@ -25,6 +25,9 @@ router.get('/', minRole(UserRole.TRAMITADOR), controllerProcessos.listar);
 // GET /processos/listar-todos - Listar todos por órgão
 router.get('/listar-todos', minRole(UserRole.TRAMITADOR), controllerProcessos.listarTodosPorOrgao);
 
+// GET /processos/filtros - Valores distintos para dropdowns de filtros
+router.get('/filtros', minRole(UserRole.TRAMITADOR), controllerProcessos.listarValoresDistintos);
+
 // GET /processos/listar-por-id - Buscar por ID
 router.get('/listar-por-id', minRole(UserRole.TRAMITADOR), controllerProcessos.listarPorId);
 
