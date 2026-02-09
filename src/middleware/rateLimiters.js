@@ -1,4 +1,38 @@
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware para extrair userId do token JWT silenciosamente (sem bloquear)
+ * Deve ser executado ANTES do rate limiter para identificar usuários autenticados por userId
+ */
+const extractUserIdMiddleware = (req, res, next) => {
+  try {
+    // Tentar pegar token do header Authorization
+    const authHeader = req.headers.authorization;
+    let token = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    
+    // Fallback: tentar pegar do cookie (se cookieParser já processou)
+    if (!token && req.cookies?.token) {
+      token = req.cookies.token;
+    }
+    
+    // Se encontrou token, tentar decodificar (sem validar expiração para rate limit)
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.userId = decoded.id; // Coloca userId no request para o keyGenerator usar
+      req.usuario = { id: decoded.id }; // Compatibilidade com código existente
+    }
+  } catch (error) {
+    // Token inválido/expirado - ignora silenciosamente e segue como não autenticado
+    // O middleware de autenticação nas rotas vai lidar com isso depois
+  }
+  
+  next();
+};
 
 /**
  * Extrai o IP real do request considerando a cadeia de proxies:
@@ -56,8 +90,9 @@ const apiLimiter = rateLimit({
     if (req.usuario?.id || req.userId) {
       return 300;
     }
-    // Visitantes anônimos: limite mais restrito (30 req/min)
-    return 30;
+    // Visitantes anônimos: limite mais flexível para suportar múltiplos usuários em NAT (150 req/min)
+    // Isso permite ~2-3 usuários carregando a aplicação simultaneamente no mesmo IP
+    return 150;
   },
   
   // Identificador: userId para autenticados, IP para anônimos
@@ -83,10 +118,19 @@ const apiLimiter = rateLimit({
   
   // Handler customizado para log (opcional, útil para monitoramento)
   handler: (req, res, next, options) => {
-    const identifier = req.usuario?.id ? `Usuário ${req.usuario.id}` : `IP ${getClientIp(req)}`;
-    console.warn(`[Rate Limit] ${identifier} excedeu o limite de requisições.`);
+    const ip = getClientIp(req);
+    const identifier = req.usuario?.id ? `Usuário ${req.usuario.id}` : `IP ${ip}`;
+    const method = req.method;
+    const path = req.path;
+    
+    console.warn(`[Rate Limit] ${identifier} excedeu o limite em ${method} ${path}`);
     
     res.status(options.statusCode).json(options.message);
+  },
+  
+  // Não limita requisições bem-sucedidas de health check
+  skip: (req) => {
+    return req.path === '/' || req.path === '/health';
   }
 });
 
@@ -118,5 +162,6 @@ const authLimiter = rateLimit({
 module.exports = {
   apiLimiter,
   authLimiter,
+  extractUserIdMiddleware,
   getClientIp // Exporta para uso em logs de auditoria
 };
