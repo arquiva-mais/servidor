@@ -28,7 +28,7 @@ const validateDateOrder = (dataCriacaoDocGo, dataUltimaTramitacao) => {
 
 async function listarProcessos(filtros, paginacao = {}) {
   const { busca, setor, objeto, data_inicio, data_fim, orgao_id, status, dateField, filterPriority, meusProcessos, usuarioId } = filtros;
-  const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc' } = paginacao;
+  const { page = 1, limit = 20, sortBy = 'id', sortOrder = 'desc' } = paginacao;
   const where = {
     is_deleted: false
   };
@@ -227,6 +227,79 @@ async function listarTodosProcessosPorOrgao(orgao_id) {
   } catch {
     throw new Error('Erro ao buscar processos')
   }
+}
+
+/**
+ * Retorna valores distintos de campos-chave para popular filtros.
+ * Consulta TODOS os processos do órgão (não apenas a página atual).
+ */
+async function listarValoresDistintos(orgao_id) {
+  if (!orgao_id) {
+    throw new Error('ID do orgão não fornecido.');
+  }
+
+  const baseWhere = { orgao_id, is_deleted: false };
+
+  // Buscar valores distintos de cada campo em paralelo
+  const [objetos, setores, credores, responsaveis] = await Promise.all([
+    // Objetos via lookup table
+    Objeto.findAll({
+      attributes: ['nome'],
+      include: [{
+        model: Processo,
+        as: 'processos',
+        attributes: [],
+        where: baseWhere,
+        required: true
+      }],
+      group: ['Objeto.id', 'Objeto.nome'],
+      order: [['nome', 'ASC']],
+      raw: true
+    }).then(rows => rows.map(r => r.nome)).catch(() => []),
+
+    // Setores via lookup table
+    Setor.findAll({
+      attributes: ['nome'],
+      include: [{
+        model: Processo,
+        as: 'processos',
+        attributes: [],
+        where: baseWhere,
+        required: true
+      }],
+      group: ['Setor.id', 'Setor.nome'],
+      order: [['nome', 'ASC']],
+      raw: true
+    }).then(rows => rows.map(r => r.nome)).catch(() => []),
+
+    // Credores via lookup table
+    Credor.findAll({
+      attributes: ['nome'],
+      include: [{
+        model: Processo,
+        as: 'processos',
+        attributes: [],
+        where: baseWhere,
+        required: true
+      }],
+      group: ['Credor.id', 'Credor.nome'],
+      order: [['nome', 'ASC']],
+      raw: true
+    }).then(rows => rows.map(r => r.nome)).catch(() => []),
+
+    // Responsáveis (campo de texto no processo, não é lookup)
+    Processo.findAll({
+      attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('responsavel')), 'responsavel']],
+      where: { 
+        ...baseWhere, 
+        responsavel: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] }
+      },
+      order: [['responsavel', 'ASC']],
+      raw: true
+    }).then(rows => rows.map(r => r.responsavel).filter(Boolean)).catch(() => [])
+  ]);
+
+  return { objetos, setores, credores, responsaveis };
 }
 
 
@@ -596,6 +669,7 @@ module.exports = {
   deletarProcesso, 
   definirPrioridade,
   listarTodosProcessosPorOrgao,
+  listarValoresDistintos,
   atribuirResponsavel,
   listarUsuariosPorOrgao
 };
