@@ -13,7 +13,7 @@ const { iniciarJobs } = require('./jobs/cleanup.jobs')
 // Importar controllers de lookup tables
 const domainController = require('./controllers/domain.controller')
 const { verificarToken } = require('./middleware/auth.middleware')
-const { apiLimiter } = require('./middleware/rateLimiters');
+const { apiLimiter, extractUserIdMiddleware } = require('./middleware/rateLimiters');
 
 require('./relations/models.relations');
 
@@ -41,10 +41,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Aplicar Rate Limiting global
-app.use(apiLimiter);
+
 app.use(cookieParser());
 app.use(express.json());
+app.use(extractUserIdMiddleware);
+// 3. Aplicar rate limiting (com userId identificado)
+app.use(apiLimiter);
 
 // Rotas
 app.use('/processos', processosRoutes);
